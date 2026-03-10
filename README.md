@@ -1,34 +1,73 @@
-# CBA Air Cargo Agent
+# React + TypeScript + Vite
 
-国际货运智能体 (Cargo Business Agent) - 基于 AI 的国际货运业务场景智能化解决方案。
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## 项目概述
+Currently, two official plugins are available:
 
-CBA 针对 GSA (General Sales Agent) 日常运营中的核心痛点，提供 7 大智能体服务。
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## 核心功能
+## React Compiler
 
-| Agent | 功能 |
-|-------|------|
-| 舱位估算专家 | 航班舱位预测，提前预警 |
-| 收益估算专家 | 动态定价，智能置换 |
-| 合规检查专家 | IATA DGR 危险品审查 |
-| 核对改单专家 | FWB/CBA 数据一致性 |
-| 排舱与吨控专家 | 智能排舱算法 (本期重点) |
-| 单板装载专家 | 3D 装箱优化 |
-| 发运后复盘专家 | BI 报告，根因分析 |
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## 技术栈
+## Expanding the ESLint configuration
 
-- React 18 + TypeScript
-- TailwindCSS
-- 3D 可视化 (Three.js)
-- AI 集成
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-## 版本
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
 
-- v1.0.0 - 项目启动
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
 
-## 参考
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
 
-- Demo: https://22b7g7q5pp.space.minimaxi.com/
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
