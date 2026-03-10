@@ -6,53 +6,63 @@ interface Flight {
   flightNo: string
   route: string
   departureTime: string
-  arrivalTime: string
   aircraft: string
   loadRate: number
   revenue: number
   weight: number
   capacity: number
-  status: 'planned' | 'loading' | 'closed' | 'departed' | 'warning'
+  status: 'planned' | 'loading' | 'warning'
 }
 
 interface Cargo {
   id: string
-  shipper: string
+  awbNo: string
+  pieces: number
   weight: number
+  volume: number
+  shc: string
+  dgrDetails: string
+  status: 'unloaded' | 'loaded'
+  shipper: string
   revenue: number
-  priority: 'high' | 'medium' | 'low'
   isDgr: boolean
-  isTemperature: boolean
-  isOversize: boolean
-  isSelected: boolean
 }
 
-interface AircraftModel {
-  name: string
+interface ULD {
+  id: string
+  type: string
   code: string
-  maxWeight: number
-  compartments: { name: string; code: string; maxWeight: number }[]
+  weight: number
+  cargoCount: number
+  isExpanded: boolean
 }
 
-const aircraftModels: AircraftModel[] = [
-  { name: 'Boeing 747-400F', code: 'B744F', maxWeight: 124, compartments: [{ name: '前货舱', code: 'A', maxWeight: 27 }, { name: '中货舱', code: 'B', maxWeight: 48 }, { name: '后货舱', code: 'C', maxWeight: 49 }] },
-  { name: 'Boeing 777F', code: 'B77F', maxWeight: 102, compartments: [{ name: '前货舱', code: 'A', maxWeight: 51 }, { name: '后货舱', code: 'B', maxWeight: 51 }] },
-  { name: 'Boeing 767-300F', code: 'B763F', maxWeight: 52, compartments: [{ name: '前货舱', code: 'A', maxWeight: 26 }, { name: '后货舱', code: 'B', maxWeight: 26 }] },
+// Mock Data
+const flights: Flight[] = Array.from({ length: 30 }, (_, i) => ({
+  id: `${i + 1}`,
+  flightNo: ['MU', 'CA', 'CZ', 'CX', 'SQ'][i % 5] + String(5000 + i),
+  route: ['PVG→LAX', 'PVG→FRA', 'CAN→AMS', 'PVG→SYD', 'HKG→ORD'][i % 5],
+  departureTime: ['23:55', '14:30', '01:15', '16:20', '22:10'][i % 5],
+  aircraft: ['B77F', 'B744F', 'B763F'][i % 3],
+  loadRate: Math.floor(Math.random() * 40) + 60,
+  revenue: Math.floor(Math.random() * 30) + 80,
+  weight: Math.floor(Math.random() * 50) + 50,
+  capacity: 100,
+  status: ['planned', 'loading', 'warning'][i % 3] as any
+}))
+
+const cargos: Cargo[] = [
+  { id: 'C001', awbNo: '781-12345678', pieces: 25, weight: 1200, volume: 45, shc: 'RCS', dgrDetails: '', status: 'unloaded', shipper: '阿里巴巴', revenue: 25000, isDgr: false },
+  { id: 'C002', awbNo: '781-23456789', pieces: 18, weight: 800, volume: 32, shc: '', dgrDetails: '', status: 'unloaded', shipper: '京东物流', revenue: 18000, isDgr: false },
+  { id: 'C003', awbNo: '781-34567890', pieces: 10, weight: 450, volume: 18, shc: 'DGR', dgrDetails: 'UN3481', status: 'unloaded', shipper: '顺丰速运', revenue: 12000, isDgr: true },
+  { id: 'C004', awbNo: '781-45678901', pieces: 50, weight: 2000, volume: 85, shc: 'ESH', dgrDetails: '', status: 'unloaded', shipper: '拼多多', revenue: 35000, isDgr: false },
+  { id: 'C005', awbNo: '781-56789012', pieces: 80, weight: 3200, volume: 120, shc: 'DGR', dgrDetails: 'UN3171', status: 'unloaded', shipper: '宁德时代', revenue: 85000, isDgr: true },
+  { id: 'C006', awbNo: '781-67890123', pieces: 5, weight: 200, volume: 5, shc: 'COL', dgrDetails: '2-8°C', status: 'unloaded', shipper: '辉瑞制药', revenue: 45000, isDgr: false },
 ]
 
-const flights: Flight[] = [
-  { id: '1', flightNo: 'MU5735', route: 'PVG→LAX', departureTime: '23:55', arrivalTime: '16:30+1', aircraft: 'B77F', loadRate: 84.9, revenue: 93, weight: 85.2, capacity: 102, status: 'planned' },
-  { id: '2', flightNo: 'MU5737', route: 'PVG→LAX', departureTime: '23:55', arrivalTime: '16:30+1', aircraft: 'B77F', loadRate: 95.3, revenue: 110, weight: 95.3, capacity: 102, status: 'warning' },
-  { id: '3', flightNo: 'CA881', route: 'PVG→FRA', departureTime: '14:30', arrivalTime: '06:20+1', aircraft: 'B744F', loadRate: 67.3, revenue: 93, weight: 83.4, capacity: 124, status: 'loading' },
-]
-
-const initialCargos: Cargo[] = [
-  { id: 'C001', shipper: '阿里巴巴', weight: 1200, priority: 'high', revenue: 25000, isDgr: false, isTemperature: false, isOversize: false, isSelected: false },
-  { id: 'C002', shipper: '京东物流', weight: 800, priority: 'high', revenue: 18000, isDgr: false, isTemperature: false, isOversize: false, isSelected: false },
-  { id: 'C003', shipper: '顺丰速运', weight: 450, priority: 'medium', revenue: 12000, isDgr: true, isTemperature: false, isOversize: false, isSelected: false },
-  { id: 'C004', shipper: '拼多多', weight: 2000, priority: 'medium', revenue: 35000, isDgr: false, isTemperature: false, isOversize: true, isSelected: false },
-  { id: 'C005', shipper: '宁德时代', weight: 3200, priority: 'high', revenue: 85000, isDgr: true, isTemperature: false, isOversize: true, isSelected: false },
-  { id: 'C006', shipper: '辉瑞制药', weight: 200, priority: 'high', revenue: 45000, isDgr: false, isTemperature: true, isOversize: false, isSelected: false },
+const initialULDs: ULD[] = [
+  { id: 'U001', type: 'Q6', code: 'AKE1234', weight: 850, cargoCount: 2, isExpanded: false },
+  { id: 'U002', type: 'LD', code: 'PAG5678', weight: 620, cargoCount: 1, isExpanded: false },
 ]
 
 const statusMap: Record<string, { label: string; color: string; bg: string }> = {
@@ -61,403 +71,301 @@ const statusMap: Record<string, { label: string; color: string; bg: string }> = 
   warning: { label: '预警', color: 'text-rose-500', bg: 'bg-rose-500/10' },
 }
 
-type Theme = 'dark' | 'light'
-
 function App() {
-  const [theme, setTheme] = useState<Theme>('dark')
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [currentPage, setCurrentPage] = useState<'flight' | 'load'>('flight')
+  const [menuCollapsed, setMenuCollapsed] = useState(false)
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null)
-  const [selectedAircraft, setSelectedAircraft] = useState<AircraftModel>(aircraftModels[1])
-  const [cargos, setCargos] = useState<Cargo[]>(initialCargos)
-  const [hoveredFlight, setHoveredFlight] = useState<string | null>(null)
+  const [cargosList, setCargosList] = useState<Cargo[]>(cargos)
+  const [ulds, setUlds] = useState<ULD[]>(initialULDs)
+  const [currentPageNum, setCurrentPageNum] = useState(1)
+  const pageSize = 10
 
   const isDark = theme === 'dark'
+  const totalPages = Math.ceil(flights.length / pageSize)
+  const displayedFlights = flights.slice((currentPageNum - 1) * pageSize, currentPageNum * pageSize)
 
   const toggleTheme = () => setTheme(isDark ? 'light' : 'dark')
+  const toggleMenu = () => setMenuCollapsed(!menuCollapsed)
 
   const handleLoadClick = (flight: Flight) => {
-    const model = aircraftModels.find(m => flight.aircraft.includes(m.code.slice(0,4))) || aircraftModels[1]
-    setSelectedAircraft(model)
     setSelectedFlight(flight)
     setCurrentPage('load')
   }
 
-  const handleCargoClick = (cargoId: string) => {
-    setCargos(cargos.map(c => c.id === cargoId ? { ...c, isSelected: !c.isSelected } : c))
+  const toggleCargoStatus = (cargoId: string) => {
+    setCargosList(cargosList.map(c => c.id === cargoId ? { ...c, status: c.status === 'unloaded' ? 'loaded' : 'unloaded' } : c))
   }
 
-  const selectedCount = cargos.filter(c => c.isSelected).length
-  const selectedWeight = cargos.filter(c => c.isSelected).reduce((sum, c) => sum + c.weight, 0) / 1000
+  const toggleULD = (uldId: string) => {
+    setUlds(ulds.map(u => u.id === uldId ? { ...u, isExpanded: !u.isExpanded } : u))
+  }
+
+  const loadedCount = cargosList.filter(c => c.status === 'loaded').length
+  const loadedWeight = cargosList.filter(c => c.status === 'loaded').reduce((sum, c) => sum + c.weight, 0) / 1000
 
   return (
-    <div className={`h-screen flex flex-col ${isDark ? 'bg-[#0a0a0f]' : 'bg-slate-50'}`}>
-      {/* Header */}
-      <header className={`h-16 flex items-center justify-between px-6 border-b transition-all duration-300 ${
-        isDark ? 'bg-gradient-to-r from-slate-900 to-slate-800 border-slate-800' : 'bg-white border-slate-200'
-      }`}>
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-shadow">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+    <div className={`h-screen flex ${isDark ? 'bg-[#0d1117]' : 'bg-[#f8f9fa]'}`}>
+      {/* Sidebar */}
+      <aside className={`${menuCollapsed ? 'w-16' : 'w-56'} ${isDark ? 'bg-[#161b22] border-[#30363d]' : 'bg-white border-r border-[#e1e4e8]'} border-r flex flex-col transition-all duration-300`}>
+        <div className={`h-14 flex items-center justify-between px-4 border-b ${isDark ? 'border-[#30363d]' : 'border-[#e1e4e8]'}`}>
+          {!menuCollapsed && <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>CBA智控</span>}
+          <button onClick={toggleMenu} className={`p-1.5 rounded ${isDark ? 'hover:bg-[#30363d]' : 'hover:bg-gray-100'}`}>
+            <svg className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={menuCollapsed ? "M13 5l7 7-7 7M5 5l7 7-7 7" : "M11 19l-7-7 7-7m8 14l-7-7 7-7"} />
+            </svg>
+          </button>
+        </div>
+        
+        <nav className="flex-1 p-2">
+          {['航班工作台', 'AI排舱', '舱位预测', '合规检查', '订单管理', '特种货', '航班复盘'].map((label, idx) => (
+            <button key={label} className={`w-full flex items-center gap-3 px-3 py-2.5 mb-1 rounded transition-all ${
+              idx === 0 ? (isDark ? 'bg-[#238636] text-white' : 'bg-[#2ea44f] text-white') : (isDark ? 'text-gray-400 hover:bg-[#21262d] hover:text-white' : 'text-gray-600 hover:bg-gray-100')
+            }`}>
+              <span>{['✈️', '🤖', '📊', '✅', '📋', '⚠️', '📈'][idx]}</span>
+              {!menuCollapsed && <span className="text-sm font-medium">{label}</span>}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className={`h-14 flex items-center justify-between px-6 border-b ${isDark ? 'bg-[#161b22] border-[#30363d]' : 'bg-white border-[#e1e4e8]'}`}>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div className={`w-8 h-8 rounded ${isDark ? 'bg-[#238636]' : 'bg-[#2ea44f]'} flex items-center justify-center`}>
+                <span className="text-white font-bold">C</span>
+              </div>
             </div>
-            <div>
-              <h1 className="font-bold text-lg tracking-tight">CBA 智控</h1>
-              <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>货运智能排舱系统</p>
+            <div className={`flex items-center gap-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              <span className="text-sm">首页</span>
+              <span>/</span>
+              <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>航班工作台</span>
             </div>
           </div>
-          
-          <div className="flex items-center gap-1">
-            {['航班工作台', 'AI排舱', '舱位预测', '合规检查'].map((label, idx) => (
-              <button key={label} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${
-                idx === 0 
-                  ? isDark ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shadow-lg shadow-indigo-500/10' 
-                  : 'bg-indigo-50 text-indigo-600 border border-indigo-200'
-                  : isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' 
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}>
-                {label}
-              </button>
+          <div className="flex items-center gap-4">
+            <button onClick={toggleTheme} className={`p-2 rounded ${isDark ? 'hover:bg-[#30363d] text-gray-400' : 'hover:bg-gray-100 text-gray-600'}`}>
+              {isDark ? '☀️' : '🌙'}
+            </button>
+            <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>2026-03-10 18:50</span>
+            <div className="flex items-center gap-2">
+              <div className={`w-8 h-8 rounded-full ${isDark ? 'bg-[#58a6ff]' : 'bg-[#0969da]'} flex items-center justify-center text-white font-medium`}>张</div>
+              <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>张伟</span>
+            </div>
+          </div>
+        </header>
+
+        {/* Stats */}
+        <div className={`px-6 py-4 border-b ${isDark ? 'bg-[#161b22] border-[#30363d]' : 'bg-white border-[#e1e4e8]'}`}>
+          <div className="flex items-center gap-8">
+            {[
+              { label: '今日航班', value: '30', color: isDark ? '#58a6ff' : '#0969da' },
+              { label: '预警航班', value: '8', color: '#f85149' },
+              { label: '平均装载率', value: '78.5%', color: '#3fb950' },
+              { label: '收益达成', value: '92.3%', color: '#d29922' },
+            ].map((stat, idx) => (
+              <div key={idx} className="flex items-center gap-3">
+                <div className="text-sm" style={{ color: stat.color }}>{stat.label}</div>
+                <div className="text-xl font-bold" style={{ color: stat.color }}>{stat.value}</div>
+              </div>
             ))}
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-2 text-emerald-500 text-xs font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            系统正常
-          </span>
-          
-          <div className={`h-6 w-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}></div>
-          
-          <button onClick={toggleTheme} className={`p-2.5 rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 ${
-            isDark ? 'hover:bg-slate-800 text-amber-400' : 'hover:bg-slate-100 text-slate-600'
-          }`}>
-            {isDark ? '☀️' : '🌙'}
-          </button>
-          
-          <div className={`flex items-center gap-4 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            <span className="font-mono">18:45:00</span>
-            <span>2026/03/10</span>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-rose-500 flex items-center justify-center text-white font-semibold shadow-lg">张</div>
-            <div>
-              <p className="text-sm font-medium">张伟</p>
-              <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>吨控主管</p>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-4 gap-4 px-6 py-5">
-        {[
-          { label: '今日航班', value: '12', unit: '班', color: '#6366f1', desc: '已离港1 关舱1' },
-          { label: '预警航班', value: '8', unit: '班', color: '#ef4444', desc: '需处理2班' },
-          { label: '平均装载率', value: '81.0', unit: '%', color: '#10b981', desc: '较昨日+2.3%' },
-          { label: '收益达成', value: '95.2', unit: '%', color: '#f59e0b', desc: '¥142万/¥149万' },
-        ].map((stat, idx) => (
-          <div key={idx} className={`relative overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 cursor-pointer ${
-            isDark ? 'bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-800 hover:border-indigo-500/50' : 'bg-white border border-slate-200 hover:border-indigo-300'
-          }`}>
-            <div className={`absolute top-0 right-0 w-24 h-24 rounded-bl-full opacity-10`} style={{ backgroundColor: stat.color }}></div>
-            <div className="flex items-start justify-between mb-3">
-              <span className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{stat.label}</span>
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-bold tracking-tight" style={{ color: isDark ? 'white' : stat.color }}>{stat.value}</span>
-              <span className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{stat.unit}</span>
-            </div>
-            <p className="text-xs mt-1.5 font-medium" style={{ color: stat.color }}>{stat.desc}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="flex items-center gap-3 px-6 pb-5">
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-500 text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all duration-200">
-          ⚡ AI批量排舱
-        </button>
-        <button className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 ${
-          isDark ? 'bg-slate-800 text-indigo-400 hover:bg-slate-700' : 'bg-slate-100 text-indigo-600 hover:bg-slate-200'
-        }`}>
-          ⚠️ 合规预警 <span className="bg-rose-500 text-white text-xs px-1.5 py-0.5 rounded-full ml-1">19</span>
-        </button>
-        <button className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 ${
-          isDark ? 'bg-slate-800 text-emerald-400 hover:bg-slate-700' : 'bg-slate-100 text-emerald-600 hover:bg-slate-200'
-        }`}>
-          📈 舱位预测
-        </button>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {currentPage === 'flight' ? (
-          <div className="flex-1 overflow-auto px-6 pb-4">
-            <div className={`rounded-2xl overflow-hidden shadow-xl ${
-              isDark ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-slate-200'
-            }`}>
-              <div className={`flex items-center justify-between px-6 py-4 border-b ${
-                isDark ? 'border-slate-800 bg-slate-800/50' : 'border-slate-200 bg-slate-50'
-              }`}>
-                <div className="flex items-center gap-4">
-                  <h2 className={`font-semibold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>今日航班列表</h2>
-                  <span className="px-2.5 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-medium rounded-full">10 班</span>
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6">
+          {currentPage === 'flight' ? (
+            <>
+              {/* Flight Table */}
+              <div className={`rounded-lg border overflow-hidden ${isDark ? 'bg-[#161b22] border-[#30363d]' : 'bg-white border-[#e1e4e8]'}`}>
+                <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-[#21262d] border-[#30363d]' : 'bg-[#f6f8fa] border-[#e1e4e8]'}`}>
+                  <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>航班列表</span>
+                  <span className={`px-2 py-0.5 rounded text-xs ${isDark ? 'bg-[#30363d] text-gray-400' : 'bg-gray-100 text-gray-600'}`}>30班</span>
                 </div>
-                <span className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>2026-03-10 · 实时更新</span>
-              </div>
-              
-              <table className="w-full">
-                <thead className={isDark ? 'bg-slate-800/50' : 'bg-slate-50'}>
-                  <tr className={`text-left text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                    <th className="px-6 py-4 font-semibold">航班号</th>
-                    <th className="px-6 py-4 font-semibold">航线</th>
-                    <th className="px-6 py-4 font-semibold">时间</th>
-                    <th className="px-6 py-4 font-semibold">机型</th>
-                    <th className="px-6 py-4 font-semibold">装载率</th>
-                    <th className="px-6 py-4 font-semibold">载量</th>
-                    <th className="px-6 py-4 font-semibold">收益</th>
-                    <th className="px-6 py-4 font-semibold">状态</th>
-                    <th className="px-6 py-4 font-semibold">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {flights.map((flight) => (
-                    <tr 
-                      key={flight.id}
-                      onMouseEnter={() => setHoveredFlight(flight.id)}
-                      onMouseLeave={() => setHoveredFlight(null)}
-                      className={`border-t transition-all duration-200 ${
-                        isDark 
-                          ? 'border-slate-800 hover:bg-slate-800/50' 
-                          : 'border-slate-100 hover:bg-indigo-50/50'
-                      } ${hoveredFlight === flight.id ? (isDark ? 'bg-slate-800/30' : 'bg-indigo-50') : ''}`}
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500/20 to-violet-500/20 flex items-center justify-center">
-                            <span className="text-indigo-400 font-bold">{flight.flightNo.slice(0,2)}</span>
-                          </div>
-                          <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{flight.flightNo}</span>
-                        </div>
-                      </td>
-                      <td className={`px-6 py-4 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{flight.route}</td>
-                      <td className={`px-6 py-4 font-mono ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{flight.departureTime}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>{flight.aircraft}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-28 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
-                            <div 
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                flight.loadRate >= 90 ? 'bg-emerald-500' : flight.loadRate >= 70 ? 'bg-indigo-500' : 'bg-rose-500'
-                              }`} 
-                              style={{ width: `${flight.loadRate}%` }}
-                            ></div>
-                          </div>
-                          <span className={`text-sm font-mono ${isDark ? 'text-white' : 'text-slate-700'}`}>{flight.loadRate}%</span>
-                        </div>
-                      </td>
-                      <td className={`px-6 py-4 font-mono ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{flight.weight}/{flight.capacity}吨</td>
-                      <td className="px-6 py-4">
-                        <span className={`font-medium ${
-                          flight.revenue >= 100 ? 'text-emerald-500' : flight.revenue >= 90 ? 'text-indigo-500' : isDark ? 'text-slate-500' : 'text-slate-400'
-                        }`}>{flight.revenue}%</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1.5 rounded-full text-xs font-medium ${statusMap[flight.status].bg} ${statusMap[flight.status].color}`}>
-                          {statusMap[flight.status].label}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button 
-                          onClick={() => handleLoadClick(flight)}
-                          className="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-500 text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all duration-200"
-                        >
-                          排舱
-                        </button>
-                      </td>
+                <table className="w-full">
+                  <thead className={isDark ? 'bg-[#21262d]' : 'bg-[#f6f8fa]'}>
+                    <tr className={`text-left text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <th className="px-4 py-3 font-medium">航班号</th>
+                      <th className="px-4 py-3 font-medium">航线</th>
+                      <th className="px-4 py-3 font-medium">起飞时间</th>
+                      <th className="px-4 py-3 font-medium">机型</th>
+                      <th className="px-4 py-3 font-medium">装载率</th>
+                      <th className="px-4 py-3 font-medium">载量</th>
+                      <th className="px-4 py-3 font-medium">收益</th>
+                      <th className="px-4 py-3 font-medium">状态</th>
+                      <th className="px-4 py-3 font-medium">操作</th>
                     </tr>
+                  </thead>
+                  <tbody>
+                    {displayedFlights.map((flight) => (
+                      <tr key={flight.id} className={`border-t ${isDark ? 'border-[#30363d] hover:bg-[#21262d]' : 'border-[#e1e4e8] hover:bg-gray-50'}`}>
+                        <td className="px-4 py-3 font-semibold">{flight.flightNo}</td>
+                        <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{flight.route}</td>
+                        <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{flight.departureTime}</td>
+                        <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{flight.aircraft}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-24 h-2 ${isDark ? 'bg-[#30363d]' : 'bg-gray-200'} rounded-full`}>
+                              <div className={`h-full rounded-full ${flight.loadRate >= 90 ? 'bg-green-500' : flight.loadRate >= 70 ? 'bg-blue-500' : 'bg-red-500'}`} style={{ width: `${flight.loadRate}%` }}></div>
+                            </div>
+                            <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{flight.loadRate}%</span>
+                          </div>
+                        </td>
+                        <td className={`px-4 py-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{flight.weight}/{flight.capacity}吨</td>
+                        <td className={`px-4 py-3 ${flight.revenue >= 100 ? 'text-green-500' : isDark ? 'text-gray-400' : 'text-gray-600'}`}>{flight.revenue}%</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded text-xs ${statusMap[flight.status].bg} ${statusMap[flight.status].color}`}>{statusMap[flight.status].label}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button onClick={() => handleLoadClick(flight)} className={`px-3 py-1.5 rounded text-sm ${isDark ? 'bg-[#238636] hover:bg-[#2ea043] text-white' : 'bg-[#2ea44f] hover:bg-[#2c974b] text-white'}`}>
+                            排舱
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              <div className="flex items-center justify-between mt-4">
+                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>共30条记录，第{currentPageNum}页，共{totalPages}页</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setCurrentPageNum(Math.max(1, currentPageNum - 1))} disabled={currentPageNum === 1} className={`px-3 py-1.5 rounded text-sm ${isDark ? 'bg-[#21262d] text-gray-400 hover:bg-[#30363d] disabled:opacity-50' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50'}`}>上一页</button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button key={page} onClick={() => setCurrentPageNum(page)} className={`w-8 h-8 rounded text-sm ${currentPageNum === page ? (isDark ? 'bg-[#58a6ff] text-white' : 'bg-[#0969da] text-white') : (isDark ? 'bg-[#21262d] text-gray-400 hover:bg-[#30363d]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}`}>{page}</button>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Cargo List */}
-            <div className={`w-80 flex flex-col border-r ${
-              isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-            }`}>
-              <div className={`p-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>待排货物</h3>
-                  <span className={`text-xs px-2 py-1 rounded-full ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>{cargos.length}票</span>
+                  <button onClick={() => setCurrentPageNum(Math.min(totalPages, currentPageNum + 1))} disabled={currentPageNum === totalPages} className={`px-3 py-1.5 rounded text-sm ${isDark ? 'bg-[#21262d] text-gray-400 hover:bg-[#30363d] disabled:opacity-50' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50'}`}>下一页</button>
                 </div>
-                <div className="flex gap-2">
-                  {['按收益', '按优先级', '按重量'].map((label, idx) => (
-                    <button key={label} className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:scale-105 ${
-                      idx === 0 
-                        ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25' 
-                        : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}>
-                      {label}
-                    </button>
+              </div>
+            </>
+          ) : (
+            /* Load Planning - Three Columns */
+            <div className="flex gap-4 h-full">
+              /* Column 1: Cargo List */
+              <div className={`w-80 flex flex-col rounded-lg border overflow-hidden ${isDark ? 'bg-[#161b22] border-[#30363d]' : 'bg-white border-[#e1e4e8]'}`}>
+                <div className={`px-4 py-3 border-b ${isDark ? 'border-[#30363d]' : 'border-[#e1e4e8]'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>货物清单</span>
+                    <span className={`px-2 py-0.5 rounded text-xs ${isDark ? 'bg-[#30363d] text-gray-400' : 'bg-gray-100 text-gray-600'}`}>{cargosList.length}票</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className={`flex-1 px-2 py-1.5 rounded text-xs ${isDark ? 'bg-[#238636] text-white' : 'bg-[#2ea44f] text-white'}`}>按收益</button>
+                    <button className={`flex-1 px-2 py-1.5 rounded text-xs ${isDark ? 'bg-[#21262d] text-gray-400' : 'bg-gray-100 text-gray-600'}`}>按重量</button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-auto">
+                  {cargosList.map((cargo) => (
+                    <div key={cargo.id} onClick={() => toggleCargoStatus(cargo.id)} className={`p-3 border-b cursor-pointer transition-colors ${isDark ? 'border-[#30363d] hover:bg-[#21262d]' : 'border-[#e1e4e8] hover:bg-gray-50'} ${cargo.status === 'loaded' ? (isDark ? 'bg-[#21262d]' : 'bg-blue-50') : ''}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${cargo.status === 'loaded' ? (isDark ? 'bg-[#58a6ff] border-[#58a6ff]' : 'bg-[#0969da] border-[#0969da]') : (isDark ? 'border-[#30363d]' : 'border-gray-300')}`}>
+                            {cargo.status === 'loaded' && <span className="text-white text-xs">✓</span>}
+                          </div>
+                          <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{cargo.awbNo}</span>
+                        </div>
+                        <span className={`px-1.5 py-0.5 rounded text-xs ${cargo.status === 'loaded' ? (isDark ? 'bg-[#238636] text-white' : 'bg-[#2ea44f] text-white') : (isDark ? 'bg-[#30363d] text-gray-400' : 'bg-gray-100 text-gray-600')}`}>{cargo.status === 'loaded' ? '已排舱' : '未排舱'}</span>
+                      </div>
+                      <div className={`text-xs space-y-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <div className="flex justify-between"><span>件/重/体:</span><span>{cargo.pieces}件 / {cargo.weight}kg / {cargo.volume}m³</span></div>
+                        <div className="flex justify-between"><span>SHC:</span><span>{cargo.shc || '-'}</span></div>
+                        <div className="flex justify-between"><span>DGR:</span><span className={cargo.isDgr ? 'text-amber-500' : ''}>{cargo.dgrDetails || '-'}</span></div>
+                        <div className="flex justify-between"><span>发货人:</span><span>{cargo.shipper}</span></div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
-              
-              <div className="flex-1 overflow-auto p-2">
-                {cargos.map((cargo) => (
-                  <div 
-                    key={cargo.id} 
-                    onClick={() => handleCargoClick(cargo.id)}
-                    className={`mb-2 p-3.5 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
-                      cargo.isSelected 
-                        ? 'border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/20' 
-                        : isDark ? 'bg-slate-800/50 border-slate-800 hover:border-indigo-500/30 hover:bg-slate-800' : 'bg-slate-50 border-slate-200 hover:border-indigo-300 hover:bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                          cargo.isSelected ? 'bg-indigo-500 border-indigo-500' : isDark ? 'border-slate-600' : 'border-slate-300'
-                        }`}>
-                          {cargo.isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                        </div>
-                        <span className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{cargo.id}</span>
-                      </div>
-                      <div className="flex gap-1.5">
-                        {cargo.isDgr && <span className="px-2 py-0.5 bg-amber-500/20 text-amber-500 text-xs rounded-md font-medium">DGR</span>}
-                        {cargo.isTemperature && <span className="px-2 py-0.5 bg-sky-500/20 text-sky-500 text-xs rounded-md font-medium">温控</span>}
-                        {cargo.isOversize && <span className="px-2 py-0.5 bg-violet-500/20 text-violet-500 text-xs rounded-md font-medium">超大</span>}
-                        {cargo.priority === 'high' && <span className="px-2 py-0.5 bg-rose-500/20 text-rose-500 text-xs rounded-md font-medium">急</span>}
-                      </div>
-                    </div>
-                    <div className={`text-xs space-y-1.5 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-                      <div className="flex justify-between"><span>发货人:</span><span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{cargo.shipper}</span></div>
-                      <div className="flex justify-between"><span>重量:</span><span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{cargo.weight}kg</span></div>
-                      <div className="flex justify-between"><span>收益:</span><span className="text-emerald-500 font-medium">¥{cargo.revenue.toLocaleString()}</span></div>
+
+              /* Column 2: ULD */
+              <div className={`w-72 flex flex-col rounded-lg border overflow-hidden ${isDark ? 'bg-[#161b22] border-[#30363d]' : 'bg-white border-[#e1e4e8]'}`}>
+                <div className={`px-4 py-3 border-b ${isDark ? 'border-[#30363d]' : 'border-[#e1e4e8]'}`}>
+                  <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>ULD打板区</span>
+                </div>
+                <div className="p-3 border-b border-[#30363d]">
+                  <button className={`w-full py-2 rounded text-sm ${isDark ? 'bg-[#21262d] text-gray-300 hover:bg-[#30363d]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>+ 新建ULD</button>
+                </div>
+                <div className="flex-1 overflow-auto p-2">
+                  <div className={`mb-4 p-3 rounded-lg ${isDark ? 'bg-[#21262d]' : 'bg-gray-50'}`}>
+                    <div className={`text-xs font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>标准板型 (B777F)</div>
+                    <div className="flex flex-wrap gap-2">
+                      {['Q6', 'Q7', 'LD', 'AKE', 'PAG'].map(type => (
+                        <button key={type} className={`px-2 py-1 rounded text-xs ${isDark ? 'bg-[#30363d] text-gray-300 hover:bg-[#484f58]' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>{type}</button>
+                      ))}
                     </div>
                   </div>
-                ))}
+                  {ulds.map((uld) => (
+                    <div key={uld.id} className={`mb-2 rounded-lg border overflow-hidden ${isDark ? 'border-[#30363d]' : 'border-gray-200'}`}>
+                      <div onClick={() => toggleULD(uld.id)} className={`px-3 py-2 cursor-pointer flex items-center justify-between ${isDark ? 'bg-[#21262d]' : 'bg-gray-50'}`}>
+                        <div className="flex items-center gap-2">
+                          <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{uld.type}</span>
+                          <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{uld.code}</span>
+                        </div>
+                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{uld.weight}kg</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Aircraft View */}
-            <div className={`flex-1 flex flex-col ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
-              <div className={`p-4 border-b flex items-center justify-between transition-all duration-300 ${
-                isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'
-              }`}>
-                <div className="flex items-center gap-4">
-                  <button 
-                    onClick={() => setCurrentPage('flight')}
-                    className={`p-2 rounded-lg transition-all duration-200 hover:scale-110 ${
-                      isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                  </button>
-                  <h3 className={`font-bold text-xl tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    {selectedFlight?.flightNo} {selectedFlight?.route}
-                  </h3>
-                  <span className="px-2.5 py-1 bg-rose-500/20 text-rose-500 text-xs rounded-full font-medium">预警</span>
-                </div>
-                <div className="flex items-center gap-6">
-                  <div><p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>装载率</p><p className="text-amber-500 font-bold">{selectedFlight?.loadRate}%</p></div>
-                  <div><p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>收益达成</p><p className="text-emerald-500 font-bold">{selectedFlight?.revenue}%</p></div>
-                </div>
-              </div>
-              
-              <div className="flex-1 flex items-center justify-center">
-                <div className="w-[600px]">
-                  <div className="flex justify-center gap-3 mb-6">
-                    {aircraftModels.map((model) => (
-                      <button 
-                        key={model.code} 
-                        onClick={() => setSelectedAircraft(model)}
-                        className={`px-4 py-2 rounded-lg text-sm transition-all duration-200 hover:scale-105 ${
-                          selectedAircraft.code === model.code 
-                            ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25' 
-                            : isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                        }`}
-                      >
-                        {model.name}
+              /* Column 3: Aircraft Layout */
+              <div className="flex-1 flex flex-col">
+                <div className={`rounded-t-lg border p-4 ${isDark ? 'bg-[#161b22] border-[#30363d]' : 'bg-white border-[#e1e4e8]'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <button onClick={() => setCurrentPage('flight')} className={`p-1 rounded ${isDark ? 'hover:bg-[#30363d] text-gray-400' : 'hover:bg-gray-100 text-gray-600'}`}>
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                       </button>
-                    ))}
-                  </div>
-                  
-                  {/* Aircraft */}
-                  <div className="relative h-40 flex items-center justify-center">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-28">
-                      <div class-0 top-Name={`absolute left0 w-24 h-22 rounded-lg -rotate-12 -translate-y-4 ${isDark ? 'bg-slate-700' : 'bg-blue-100'}`}></div>
-                      <div className={`absolute right-0 top-0 w-24 h-22 rounded-lg rotate-12 -translate-y-4 ${isDark ? 'bg-slate-700' : 'bg-blue-100'}`}></div>
-                    </div>
-                    <div className={`w-[380px] h-14 rounded-full relative ${isDark ? 'bg-gradient-to-r from-slate-700 via-slate-600 to-slate-700' : 'bg-gradient-to-r from-blue-200 via-blue-300 to-blue-200'}`}>
-                      <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-10 h-8 rounded-l-full ${isDark ? 'bg-slate-700' : 'bg-blue-200'}`}></div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-center gap-6 mt-8">
-                    {selectedAircraft.compartments.map((comp) => (
-                      <div key={comp.code} className={`w-32 h-24 rounded-xl border-2 p-3 ${
-                        isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'
-                      }`}>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{comp.name}</span>
-                          <span className="text-xs font-bold text-cyan-500">{Math.floor(Math.random() * 30 + 70)}%</span>
-                        </div>
-                        <div className={`h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
-                          <div className="h-full bg-cyan-500 rounded-full" style={{ width: '75%' }}></div>
-                        </div>
-                        <div className="flex justify-between text-xs mt-2">
-                          <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>{comp.code}</span>
-                          <span>{comp.maxWeight}吨</span>
-                        </div>
+                      <div>
+                        <div className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedFlight?.flightNo} {selectedFlight?.route}</div>
+                        <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{selectedFlight?.aircraft} | {selectedFlight?.departureTime}起飞</div>
                       </div>
-                    ))}
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div><span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>装载率</span><div className="text-amber-500 font-bold">{selectedFlight?.loadRate}%</div></div>
+                      <div><span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>收益达成</span><div className="text-green-500 font-bold">{selectedFlight?.revenue}%</div></div>
+                    </div>
+                  </div>
+                </div>
+                <div className={`flex-1 rounded-b-lg border border-t-0 p-4 ${isDark ? 'bg-[#161b22] border-[#30363d]' : 'bg-white border-[#e1e4e8]'}`}>
+                  {['前货舱 (A)', '后货舱 (B)'].map((name, idx) => (
+                    <div key={idx} className={`mb-4 p-3 rounded-lg border ${isDark ? 'border-[#30363d] bg-[#21262d]' : 'border-gray-200 bg-gray-50'}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{name}</span>
+                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>0/51吨</span>
+                      </div>
+                      <div className={`h-8 rounded ${isDark ? 'bg-[#30363d]' : 'bg-gray-200'}`}>
+                        <div className="h-full bg-blue-500 rounded-l" style={{ width: `${Math.random() * 30 + 10}%` }}></div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className={`mt-auto p-3 rounded-lg border ${isDark ? 'border-amber-500/50 bg-amber-500/10' : 'border-amber-300 bg-amber-50'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>重心平衡</span>
+                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>正常范围内</span>
+                    </div>
+                  </div>
+                </div>
+                /* Stats & Actions */
+                <div className={`mt-4 rounded-lg border p-4 ${isDark ? 'bg-[#161b22] border-[#30363d]' : 'bg-white border-[#e1e4e8]'}`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex gap-6">
+                      <div><span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>已排货物</span><div className="font-bold">{loadedCount}票</div></div>
+                      <div><span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>已排重量</span><div className="font-bold">{loadedWeight.toFixed(1)}吨</div></div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className={`flex-1 py-2.5 rounded text-sm font-medium ${isDark ? 'bg-[#238636] hover:bg-[#2ea043] text-white' : 'bg-[#2ea44f] hover:bg-[#2c974b] text-white'}`}>保存方案</button>
+                    <button className={`flex-1 py-2.5 rounded text-sm font-medium bg-gradient-to-r from-indigo-500 to-violet-500 text-white hover:shadow-lg`}>⚡ 一键排舱</button>
+                    <button className={`px-4 py-2.5 rounded text-sm ${isDark ? 'bg-[#21262d] text-gray-400 hover:bg-[#30363d]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>重置</button>
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* Right Panel */}
-            <div className={`w-72 flex flex-col ${
-              isDark ? 'bg-slate-900 border-l border-slate-800' : 'bg-white border-l border-slate-200'
-            }`}>
-              <div className={`p-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-                <h3 className="font-semibold">货物详情</h3>
-              </div>
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 flex items-center justify-center mx-auto mb-4 text-4xl">📦</div>
-                  <p className={isDark ? 'text-slate-500' : 'text-slate-400'}>点击货物查看详情</p>
-                </div>
-              </div>
-              <div className={`p-4 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
-                    <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>已选货物</p>
-                    <p className="text-xl font-semibold">{selectedCount}票</p>
-                  </div>
-                  <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
-                    <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>已排重量</p>
-                    <p className="text-xl font-semibold">{selectedWeight.toFixed(1)}吨</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <button className="w-full py-2.5 bg-indigo-500 text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all duration-200">保存方案</button>
-                  <button className="w-full py-2.5 bg-gradient-to-r from-indigo-500 to-violet-500 text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all duration-200">AI批量排舱</button>
-                  <button className={`w-full py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 ${
-                    isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}>重置</button>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )
