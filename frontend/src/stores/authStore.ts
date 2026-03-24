@@ -27,16 +27,16 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       login: async (email: string, password: string) => {
-        const response = await api.post('/auth/login', { email, password })
-        const { user, accessToken } = response.data
-        
-        localStorage.setItem('token', accessToken)
-        
-        set({
-          user,
-          token: accessToken,
-          isAuthenticated: true,
-        })
+        try {
+          const response = await api.post('/auth/login', { email, password })
+          const { user, accessToken } = response.data
+          localStorage.setItem('token', accessToken)
+          set({ user, token: accessToken, isAuthenticated: true })
+        } catch (err: any) {
+          const msg = err?.response?.data?.message || err?.message || '网络错误，请检查网络连接'
+          console.error('[Auth] Login error:', msg, err?.response?.status)
+          throw new Error(msg)
+        }
       },
 
       logout: () => {

@@ -16,7 +16,8 @@ export default function LoginPage() {
       message.success('登录成功')
       navigate('/dashboard')
     } catch (error: any) {
-      message.error(error.response?.data?.message || '登录失败')
+      const errMsg = error?.response?.data?.message || error?.message || '登录失败'
+      message.error(errMsg)
     } finally {
       setLoading(false)
     }

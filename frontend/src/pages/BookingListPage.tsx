@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, Table, Button, Tag, Space, Modal, message, Form, Input, InputNumber, Select, DatePicker } from 'antd'
 import { PlusOutlined, SearchOutlined, EyeOutlined } from '@ant-design/icons'
-import { bookingApi } from '../../services/api'
+import { bookingApi } from '../services/api'
 
 const { RangePicker } = DatePicker
 

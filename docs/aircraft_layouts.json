@@ -1,0 +1,91 @@
+{
+  "B747-400F": {
+    "name_cn": "波音747-400F全货机",
+    "name_en": "Boeing 747-400ER Freighter",
+    "iata_code": "74F",
+    "max_payweight_kg": 112000,
+    "max_volume_m3": 250,
+    "mac_m": 19.68,
+    "mac_leading_edge_m": 17.7,
+    "cg_limits": {
+      "takeoff": { "min_pct": 9, "max_pct": 33 },
+      "cruise":  { "min_pct": 11, "max_pct": 38 },
+      "landing": { "min_pct": 9, "max_pct": 38 }
+    },
+    "fuselage_length_m": 70.6,
+    "positions": {
+      "nose": [
+        { "code": "N1", "label_cn": "鼻舱前", "label_en": "Nose FWD", "deck": "nose", "arm_m": 8.7, "max_weight_kg": 4000, "allowed_uld": ["AKE","AVP"], "row": "nose", "cargo_type": "general" },
+        { "code": "N2", "label_cn": "鼻舱后", "label_en": "Nose AFT", "deck": "nose", "arm_m": 10.5, "max_weight_kg": 4000, "allowed_uld": ["AKE","AVP"], "row": "nose", "cargo_type": "general" }
+      ],
+      "main": [
+        { "code": "M1", "label_cn": "主舱前", "label_en": "Main FWD", "deck": "main", "arm_m": 17.0, "max_weight_kg": 20000, "allowed_uld": ["PMC","PAG","P1P"], "row": "forward", "cargo_type": "general" },
+        { "code": "M2", "label_cn": "主舱中", "label_en": "Main MID", "deck": "main", "arm_m": 21.5, "max_weight_kg": 20000, "allowed_uld": ["PMC","PAG","P1P"], "row": "mid", "cargo_type": "general" },
+        { "code": "M3", "label_cn": "主舱后", "label_en": "Main AFT", "deck": "main", "arm_m": 26.0, "max_weight_kg": 18000, "allowed_uld": ["PMC","PAG","P1P","AKE"], "row": "aft", "cargo_type": "general" }
+      ],
+      "lower": [
+        { "code": "L1", "label_cn": "下货舱前", "label_en": "Lower FWD", "deck": "lower", "arm_m": 12.5, "max_weight_kg": 6000, "allowed_uld": ["AKE","RKN","AVP"], "row": "forward", "cargo_type": "refrigerated" },
+        { "code": "L2", "label_cn": "下货舱中", "label_en": "Lower MID", "deck": "lower", "arm_m": 20.5, "max_weight_kg": 10000, "allowed_uld": ["AKE","RKN","AVP","PMC"], "row": "mid", "cargo_type": "refrigerated" },
+        { "code": "L3", "label_cn": "下货舱后", "label_en": "Lower AFT", "deck": "lower", "arm_m": 27.5, "max_weight_kg": 6000, "allowed_uld": ["AKE","RKN"], "row": "aft", "cargo_type": "refrigerated" }
+      ]
+    }
+  },
+  "B777-200LRF": {
+    "name_cn": "波音777-200LRF全货机",
+    "name_en": "Boeing 777-200LR Large Cargo Freighter",
+    "iata_code": "77L",
+    "max_payweight_kg": 102000,
+    "max_volume_m3": 240,
+    "mac_m": 18.43,
+    "mac_leading_edge_m": 15.6,
+    "cg_limits": {
+      "takeoff": { "min_pct": 9, "max_pct": 35 },
+      "cruise":  { "min_pct": 11, "max_pct": 39 },
+      "landing": { "min_pct": 9, "max_pct": 40 }
+    },
+    "fuselage_length_m": 63.7,
+    "positions": {
+      "main": [
+        { "code": "M1", "label_cn": "主舱前左", "label_en": "Main FWD L", "deck": "main", "arm_m": 15.5, "max_weight_kg": 12000, "allowed_uld": ["PMC","PAG","P1P"], "row": "forward", "cargo_type": "general" },
+        { "code": "M2", "label_cn": "主舱前右", "label_en": "Main FWD R", "deck": "main", "arm_m": 15.5, "max_weight_kg": 12000, "allowed_uld": ["PMC","PAG","P1P"], "row": "forward", "cargo_type": "general" },
+        { "code": "M3", "label_cn": "主舱中左", "label_en": "Main MID L", "deck": "main", "arm_m": 21.5, "max_weight_kg": 14000, "allowed_uld": ["PMC","PAG","P1P"], "row": "mid", "cargo_type": "general" },
+        { "code": "M4", "label_cn": "主舱中右", "label_en": "Main MID R", "deck": "main", "arm_m": 21.5, "max_weight_kg": 14000, "allowed_uld": ["PMC","PAG","P1P"], "row": "mid", "cargo_type": "general" },
+        { "code": "M5", "label_cn": "主舱后左", "label_en": "Main AFT L", "deck": "main", "arm_m": 26.5, "max_weight_kg": 10000, "allowed_uld": ["PMC","PAG","P1P","AKE"], "row": "aft", "cargo_type": "general" },
+        { "code": "M6", "label_cn": "主舱后右", "label_en": "Main AFT R", "deck": "main", "arm_m": 26.5, "max_weight_kg": 10000, "allowed_uld": ["PMC","PAG","P1P","AKE"], "row": "aft", "cargo_type": "general" }
+      ],
+      "lower": [
+        { "code": "L1", "label_cn": "下货舱前", "label_en": "Lower FWD", "deck": "lower", "arm_m": 12.0, "max_weight_kg": 5000, "allowed_uld": ["AKE","AVP","RKN"], "row": "forward", "cargo_type": "refrigerated" },
+        { "code": "L2", "label_cn": "下货舱中前", "label_en": "Lower MID FWD", "deck": "lower", "arm_m": 17.0, "max_weight_kg": 7000, "allowed_uld": ["AKE","AVP","RKN"], "row": "forward", "cargo_type": "refrigerated" },
+        { "code": "L3", "label_cn": "下货舱中后", "label_en": "Lower MID AFT", "deck": "lower", "arm_m": 22.0, "max_weight_kg": 7000, "allowed_uld": ["AKE","AVP","RKN","PMC"], "row": "mid", "cargo_type": "refrigerated" },
+        { "code": "L4", "label_cn": "下货舱后", "label_en": "Lower AFT", "deck": "lower", "arm_m": 27.0, "max_weight_kg": 5000, "allowed_uld": ["AKE","RKN"], "row": "aft", "cargo_type": "refrigerated" }
+      ]
+    }
+  },
+  "A330-200F": {
+    "name_cn": "空客A330-200F全货机",
+    "name_en": "Airbus A330-200 Freighter",
+    "iata_code": "332F",
+    "max_payweight_kg": 59000,
+    "max_volume_m3": 140,
+    "mac_m": 15.91,
+    "mac_leading_edge_m": 13.37,
+    "cg_limits": {
+      "takeoff": { "min_pct": 10, "max_pct": 35 },
+      "cruise":  { "min_pct": 12, "max_pct": 38 },
+      "landing": { "min_pct": 10, "max_pct": 40 }
+    },
+    "fuselage_length_m": 58.37,
+    "positions": {
+      "main": [
+        { "code": "M1", "label_cn": "主舱前左", "label_en": "Main FWD L", "deck": "main", "arm_m": 14.5, "max_weight_kg": 8000, "allowed_uld": ["PMC","PAG","P1P","AKE"], "row": "forward", "cargo_type": "general" },
+        { "code": "M2", "label_cn": "主舱前右", "label_en": "Main FWD R", "deck": "main", "arm_m": 14.5, "max_weight_kg": 8000, "allowed_uld": ["PMC","PAG","P1P","AKE"], "row": "forward", "cargo_type": "general" },
+        { "code": "M3", "label_cn": "主舱后", "label_en": "Main AFT", "deck": "main", "arm_m": 21.0, "max_weight_kg": 14000, "allowed_uld": ["PMC","PAG","P1P"], "row": "aft", "cargo_type": "general" }
+      ],
+      "lower": [
+        { "code": "L1", "label_cn": "下货舱前", "label_en": "Lower FWD", "deck": "lower", "arm_m": 11.0, "max_weight_kg": 3500, "allowed_uld": ["AKE","AVP","RKN"], "row": "forward", "cargo_type": "refrigerated" },
+        { "code": "L2", "label_cn": "下货舱中", "label_en": "Lower MID", "deck": "lower", "arm_m": 17.0, "max_weight_kg": 5500, "allowed_uld": ["AKE","AVP","RKN"], "row": "mid", "cargo_type": "refrigerated" },
+        { "code": "L3", "label_cn": "下货舱后", "label_en": "Lower AFT", "deck": "lower", "arm_m": 23.0, "max_weight_kg": 3500, "allowed_uld": ["AKE","RKN"], "row": "aft", "cargo_type": "refrigerated" }
+      ]
+    }
+  }
+}

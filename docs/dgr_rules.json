@@ -1,0 +1,143 @@
+{
+  "dgr_classes": {
+    "1": {
+      "name_cn": "爆炸品",
+      "name_en": "Explosives",
+      "color": "#FF4444",
+      "segregation": ["3", "5.1", "5.2"],
+      "must_separate_uld": true,
+      "cannot_share_container": true
+    },
+    "2.1": {
+      "name_cn": "易燃气体",
+      "name_en": "Flammable Gas",
+      "color": "#FF6600",
+      "segregation": ["2.3", "3", "4.1", "5.1"],
+      "must_separate_uld": true,
+      "cannot_share_container": true
+    },
+    "2.2": {
+      "name_cn": "非易燃、无毒气体",
+      "name_en": "Non-Flammable Gas",
+      "color": "#00AAFF",
+      "segregation": [],
+      "must_separate_uld": false,
+      "cannot_share_container": false
+    },
+    "2.3": {
+      "name_cn": "毒性气体",
+      "name_en": "Toxic Gas",
+      "color": "#CC0000",
+      "segregation": ["2.1", "3", "4.1", "5.1"],
+      "must_separate_uld": true,
+      "cannot_share_container": true
+    },
+    "3": {
+      "name_cn": "易燃液体",
+      "name_en": "Flammable Liquid",
+      "color": "#FF0000",
+      "segregation": ["1", "2.1", "5.1", "5.2"],
+      "must_separate_uld": true,
+      "cannot_share_container": true
+    },
+    "4.1": {
+      "name_cn": "易燃固体",
+      "name_en": "Flammable Solid",
+      "color": "#FF8800",
+      "segregation": ["2.3", "3", "5.1"],
+      "must_separate_uld": false,
+      "cannot_share_container": false
+    },
+    "4.2": {
+      "name_cn": "自燃物质",
+      "name_en": "Spontaneous Combustible",
+      "color": "#FF4400",
+      "segregation": ["5.1"],
+      "must_separate_uld": false,
+      "cannot_share_container": false
+    },
+    "4.3": {
+      "name_cn": "遇水释放易燃气体的物质",
+      "name_en": "Dangerous When Wet",
+      "color": "#FF8800",
+      "segregation": ["5.1"],
+      "must_separate_uld": false,
+      "cannot_share_container": false
+    },
+    "5.1": {
+      "name_cn": "氧化剂",
+      "name_en": "Oxidizer",
+      "color": "#FFCC00",
+      "segregation": ["1", "2.1", "2.3", "3", "4.1"],
+      "must_separate_uld": true,
+      "cannot_share_container": true
+    },
+    "5.2": {
+      "name_cn": "有机过氧化物",
+      "name_en": "Organic Peroxide",
+      "color": "#FF1100",
+      "segregation": ["1", "3"],
+      "must_separate_uld": true,
+      "cannot_share_container": true
+    },
+    "6.1": {
+      "name_cn": "有毒物质",
+      "name_en": "Toxic Substance",
+      "color": "#8800FF",
+      "segregation": ["2.3"],
+      "must_separate_uld": false,
+      "cannot_share_container": false
+    },
+    "6.2": {
+      "name_cn": "感染性物质",
+      "name_en": "Infectious Substance",
+      "color": "#00AA00",
+      "segregation": [],
+      "must_separate_uld": true,
+      "cannot_share_container": true,
+      "notes": "必须与其他货物完全隔离"
+    },
+    "7": {
+      "name_cn": "放射性物质",
+      "name_en": "Radioactive Material",
+      "color": "#CC00FF",
+      "segregation": [],
+      "must_separate_uld": true,
+      "cannot_share_container": true,
+      "notes": "按IAEA规定隔离，需专用货舱"
+    },
+    "8": {
+      "name_cn": "腐蚀性物质",
+      "name_en": "Corrosive",
+      "color": "#00AA00",
+      "segregation": [],
+      "must_separate_uld": false,
+      "cannot_share_container": false
+    },
+    "9": {
+      "name_cn": "杂项危险品",
+      "name_en": "Misc Dangerous Goods",
+      "color": "#FF8800",
+      "segregation": [],
+      "must_separate_uld": false,
+      "cannot_share_container": false,
+      "common_un": ["UN3481", "UN3090", "UN3171", "UN3480"]
+    }
+  },
+  "common_dgr_keywords": {
+    "锂电池": { "un": "UN3481", "class": "9", "name_cn": "锂离子电池" },
+    "锂离子电池": { "un": "UN3481", "class": "9", "name_cn": "锂离子电池" },
+    "锂金属电池": { "un": "UN3090", "class": "9", "name_cn": "锂金属电池" },
+    "油漆": { "un": "UN1263", "class": "3", "name_cn": "油漆(易燃液体)" },
+    "油漆涂料": { "un": "UN1263", "class": "3", "name_cn": "油漆(易燃液体)" },
+    "酒精": { "un": "UN1170", "class": "3", "name_cn": "乙醇(易燃液体)" },
+    "喷雾": { "un": "UN1950", "class": "2.1", "name_cn": "喷雾罐(易燃气体)" },
+    "气雾剂": { "un": "UN1950", "class": "2.1", "name_cn": "气雾剂(易燃气体)" },
+    "磁性材料": { "un": "UN2807", "class": "9", "name_cn": "磁性材料(杂项)" },
+    "电池": { "un": "UN3481", "class": "9", "name_cn": "电池(杂项)" },
+    "化学品": { "un": "UN3077", "class": "9", "name_cn": "化学品(杂项)" },
+    "医药品": { "un": "UN1851", "class": "3", "name_cn": "医药品(易燃液体)" },
+    "树脂": { "un": "UN1866", "class": "3", "name_cn": "树脂(易燃液体)" },
+    "溶剂": { "un": "UN1993", "class": "3", "name_cn": "溶剂(易燃液体)" }
+  }
+}
