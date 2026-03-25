@@ -1,7 +1,9 @@
-// LoadPlanningPage v3.1 - CBA Air Cargo 专业排舱系统
+// LoadPlanningPage v3.2 - CBA Air Cargo 专业排舱系统 (3D visualization added)
 import { useState, useMemo, Component, ReactNode } from "react";
 import { Card, Button, Select, Tag, Modal, Divider, Row, Col, Progress, Tooltip, message, Popconfirm, Alert, Space } from "antd";
 import { CheckCircleOutlined, WarningOutlined, DeleteOutlined, ThunderboltOutlined, ReloadOutlined } from "@ant-design/icons";
+import CargoHold3D from "../components/CargoHold3D";
+import CargoHold3D from "../components/CargoHold3D";
 
 // ─── Error Boundary ─────────────────────────────────────────────────────────
 interface EBState { hasError: boolean; error?: Error }
@@ -331,6 +333,7 @@ function LoadPlanningPageContent() {
   const [aiR, setAiR] = useState<{ ulds: BUL[]; placements: PL[]; cg_t: CG; cg_c: CG; cg_l: CG } | null>(null);
   const [showAi, setShowAi] = useState(false);
   const [cgPhase, setCgPhase] = useState<"takeoff" | "cruise" | "landing">("takeoff");
+  const [holdViewMode, setHoldViewMode] = useState<"2d" | "3d">("2d");
 
   const aircraft = ACD[at];
 
@@ -610,15 +613,46 @@ function LoadPlanningPageContent() {
             size="small" style={{ borderRadius: 8 }}
             extra={
               <Space>
+                {/* 2D/3D视图切换 */}
+                <Button.Group size="small">
+                  <Button
+                    type={holdViewMode === "2d" ? "primary" : "default"}
+                    onClick={() => setHoldViewMode("2d")}
+                    style={holdViewMode === "2d" ? { background: "#4472C4", borderColor: "#4472C4" } : {}}
+                  >
+                    2D视图
+                  </Button>
+                  <Button
+                    type={holdViewMode === "3d" ? "primary" : "default"}
+                    onClick={() => setHoldViewMode("3d")}
+                    style={holdViewMode === "3d" ? { background: "#722ed1", borderColor: "#722ed1" } : {}}
+                  >
+                    3D视图
+                  </Button>
+                </Button.Group>
                 <Select size="small" value={cgPhase} onChange={v => setCgPhase(v)} style={{ width: 110 }}
                   options={cgOptions} />
                 <span style={{ fontSize: 11, color: "#999" }}>已装: {pl.length}个ULD</span>
               </Space>
             }>
             <div style={{ overflowX: "auto" }}>
-              <HoldLayoutSVG aircraft={aircraft} placements={pl} selectedPos={sp} onSelectPos={setSp} onRemoveUld={removeFromPos} stats={stats} />
+              {holdViewMode === "2d" ? (
+                <HoldLayoutSVG aircraft={aircraft} placements={pl} selectedPos={sp} onSelectPos={setSp} onRemoveUld={removeFromPos} stats={stats} />
+              ) : (
+                <CargoHold3D aircraft={aircraft} placements={pl} />
+              )}
             </div>
           </Card>
+
+          {/* 3D 货舱可视化 */}
+          <div style={{ marginTop: 12 }}>
+            <CargoHold3D
+              aircraft={aircraft}
+              placements={pl}
+              onSelectPos={setSp}
+              selectedPos={sp}
+            />
+          </div>
 
           {/* 重心包线图 */}
           <div style={{ marginTop: 12 }}>
