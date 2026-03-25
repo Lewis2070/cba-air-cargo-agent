@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 // For demo: use mock data when API is not available
-const DEMO_MODE = true
+const DEMO_MODE = import.meta.env.VITE_API_URL ? false : true
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 // Mock data for demo
