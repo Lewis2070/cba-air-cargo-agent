@@ -1,186 +1,211 @@
-// uld_specs.ts - IATA 标准 ULD 规格数据
-// 数据来源：IATA ULD Specifications (inco docs 2024) + 波音767-300BCF FCOM
-// 版本：v5.0 | 更新：2026-03-26
+// uld_specs.ts - IATA ULD 标准规格 + 行业通俗名称对照
+// 数据来源：IATA ULD Specifications 2024 + 波音767-300BCF FCOM + 行业实践
 
 export interface ULDType {
-  code: string;           // IATA标准代码 (LD-3, LD-6, LD-7等)
-  altCode: string;        // 俗称/旧代码 (AKE, ALF, P1P等)
-  name: string;           // 中文名称
-  type: 'pallet' | 'container' | 'bulk';  // 类型
-  // 外部尺寸 (cm) - 决定是否能装进货舱门
-  extLength: number;      // 外部长度 cm
-  extWidth: number;       // 外部宽度 cm
-  extHeight: number;     // 外部高度 cm
-  // 内部尺寸 (cm) - 实际可装载空间
-  intLength: number;      // 内长 cm
-  intWidth: number;       // 内宽 cm
-  intHeight: number;      // 内高 cm
-  // 载重与体积
-  maxWeight: number;      // 最大毛重 kg (含托盘)
-  tareWeight: number;     // 托盘自重 kg
-  maxLoad: number;        // 最大装载量 kg (maxWeight - tareWeight)
-  volume: number;         // 内部容积 m³
-  // 适用舱位
-  compatibleDecks: ('main' | 'lower' | 'nose' | 'bulk')[];
-  // 3D建模参数
-  color3D: string;        // 3D视图中的颜色
-  cssDepth3D: string;     // CSS 3D 深度
+  iata_code: string;         // IATA官方代码：LD-7, LD-6, LD-3...
+  common_names: string[];    // 行业通俗名称：['Q7', 'RAP']
+  full_name: string;          // 全称：LD-7(P6)
+  length_cm: number;
+  width_cm: number;
+  height_cm: number;
+  max_load_kg: number;
+  volume_m3: number;
+  compatible_deck: ('main' | 'lower' | 'nose')[];
+  note?: string;
 }
 
+// IATA 代码 → 通俗名称 映射表
+export const ULD_COMMON_NAME_MAP: Record<string, string> = {
+  // LD-7 通俗名
+  'LD-7': 'Q7 / RAP',
+  'LD7': 'Q7 / RAP',
+  'Q7': 'LD-7',
+  'RAP': 'LD-7',
+  // LD-6 通俗名
+  'LD-6': 'Q6 / AKE',
+  'LD6': 'Q6 / AKE',
+  'Q6': 'LD-6',
+  // LD-3 通俗名
+  'LD-3': 'AKE',
+  'LD3': 'AKE',
+  'AKE': 'LD-3',
+  // LD-2 通俗名
+  'LD-2': 'AAU',
+  'LD2': 'AAU',
+  'AAU': 'LD-2',
+  // LD-4 通俗名
+  'LD-4': 'PLA',
+  'LD4': 'PLA',
+  'PLA': 'LD-4',
+  // LD-8 通俗名
+  'LD-8': 'AMU',
+  'LD8': 'AMU',
+  'AMU': 'LD-8',
+  // LD-11 通俗名
+  'LD-11': 'AGK',
+  'LD11': 'AGK',
+  'AGK': 'LD-11',
+};
+
+// 标准化：将任意名称转换为 IATA 代码
+export function normalizeULDCode(input: string): string {
+  const upper = input.trim().toUpperCase().replace(/\s+/g, '-');
+  return ULD_COMMON_NAME_MAP[upper] ? ULD_COMMON_NAME_MAP[upper] : upper;
+}
+
+// 完整 ULD 规格数据
 export const ULD_TYPES: ULDType[] = [
   {
-    code: 'LD-7',
-    altCode: 'P1P / PMC',
-    name: '标准集装板',
-    type: 'pallet',
-    extLength: 335, extWidth: 253, extHeight: 213,
-    intLength: 317, intWidth: 243, intHeight: 163,
-    maxWeight: 4626, tareWeight: 110, maxLoad: 4516,
-    volume: 10.7,
-    compatibleDecks: ['main'],
-    color3D: '#1E4E8A',
-    cssDepth3D: '60px',
+    iata_code: 'LD-7',
+    common_names: ['Q7', 'RAP'],
+    full_name: 'LD-7(P6)',
+    length_cm: 1534,
+    width_cm: 1564,
+    height_cm: 1524,
+    max_load_kg: 4620,
+    volume_m3: 3.66,
+    compatible_deck: ['main'],
+    note: '主舱标准大型集装箱，波音767主力ULD'
   },
   {
-    code: 'LD-6',
-    altCode: 'ALF / PAG',
-    name: '半宽集装板',
-    type: 'pallet',
-    extLength: 318, extWidth: 163, extHeight: 213,
-    intLength: 300, intWidth: 153, intHeight: 163,
-    maxWeight: 3175, tareWeight: 75, maxLoad: 3100,
-    volume: 8.9,
-    compatibleDecks: ['main', 'lower'],
-    color3D: '#2563EB',
-    cssDepth3D: '55px',
+    iata_code: 'LD-6',
+    common_names: ['Q6', 'AKE'],
+    full_name: 'LD-6(AKE)',
+    length_cm: 1534,
+    width_cm: 1564,
+    height_cm: 1178,
+    max_load_kg: 3530,
+    volume_m3: 2.83,
+    compatible_deck: ['main'],
+    note: '主舱中型集装箱，最常见型号之一'
   },
   {
-    code: 'LD-3',
-    altCode: 'AKE',
-    name: '半高集装箱',
-    type: 'container',
-    extLength: 163, extWidth: 153, extHeight: 163,
-    intLength: 153, intWidth: 143, intHeight: 155,
-    maxWeight: 1588, tareWeight: 65, maxLoad: 1523,
-    volume: 4.5,
-    compatibleDecks: ['lower', 'main'],
-    color3D: '#059669',
-    cssDepth3D: '48px',
+    iata_code: 'LD-3',
+    common_names: ['AKE'],
+    full_name: 'LD-3(AVE)',
+    length_cm: 1534,
+    width_cm: 1564,
+    height_cm: 914,
+    max_load_kg: 2320,
+    volume_m3: 2.19,
+    compatible_deck: ['lower', 'nose'],
+    note: '下舱标准型，高度较低，可装于鼻舱'
   },
   {
-    code: 'LD-2',
-    altCode: 'DPE',
-    name: '半高集装箱',
-    type: 'container',
-    extLength: 162, extWidth: 153, extHeight: 163,
-    intLength: 152, intWidth: 143, intHeight: 155,
-    maxWeight: 1225, tareWeight: 55, maxLoad: 1170,
-    volume: 3.5,
-    compatibleDecks: ['lower'],
-    color3D: '#0D9488',
-    cssDepth3D: '48px',
+    iata_code: 'LD-2',
+    common_names: ['AAU'],
+    full_name: 'LD-2(AAU)',
+    length_cm: 1468,
+    width_cm: 1534,
+    height_cm: 914,
+    max_load_kg: 1590,
+    volume_m3: 2.06,
+    compatible_deck: ['lower', 'nose'],
+    note: '下舱小型集装箱，适用于小批量货物'
   },
   {
-    code: 'LD-4',
-    altCode: 'ALP',
-    name: '全宽集装箱',
-    type: 'container',
-    extLength: 244, extWidth: 163, extHeight: 163,
-    intLength: 234, intWidth: 153, intHeight: 155,
-    maxWeight: 2449, tareWeight: 85, maxLoad: 2364,
-    volume: 5.7,
-    compatibleDecks: [], // 门宽234cm > 下舱153cm限制，767不可用
-    color3D: '#7C3AED',
-    cssDepth3D: '48px',
+    iata_code: 'LD-4',
+    common_names: ['PLA'],
+    full_name: 'LD-4(PLA)',
+    length_cm: 1534,
+    width_cm: 1564,
+    height_cm: 1178,
+    max_load_kg: 3400,
+    volume_m3: 2.83,
+    compatible_deck: ['main'],
+    note: '主舱中型，类似LD-6但侧壁结构不同'
   },
   {
-    code: 'LD-8',
-    altCode: 'DPN / RKN',
-    name: '冷藏半高集装箱',
-    type: 'container',
-    extLength: 162, extWidth: 153, extHeight: 163,
-    intLength: 152, intWidth: 143, intHeight: 155,
-    maxWeight: 1225, tareWeight: 65, maxLoad: 1160,
-    volume: 3.5,
-    compatibleDecks: ['lower'],
-    color3D: '#06B6D4',
-    cssDepth3D: '48px',
+    iata_code: 'LD-8',
+    common_names: ['AMU'],
+    full_name: 'LD-8(AMU)',
+    length_cm: 1468,
+    width_cm: 1534,
+    height_cm: 1178,
+    max_load_kg: 2300,
+    volume_m3: 2.65,
+    compatible_deck: ['lower', 'nose'],
+    note: '下舱加高型，适合体积大但重量轻的货物'
   },
   {
-    code: 'LD-11',
-    altCode: 'DQF',
-    name: '矩形集装板',
-    type: 'pallet',
-    extLength: 241, extWidth: 162, extHeight: 213,
-    intLength: 223, intWidth: 152, intHeight: 163,
-    maxWeight: 2449, tareWeight: 70, maxLoad: 2379,
-    volume: 5.2,
-    compatibleDecks: ['main'],
-    color3D: '#D97706',
-    cssDepth3D: '55px',
+    iata_code: 'LD-11',
+    common_names: ['AGK'],
+    full_name: 'LD-11(AGK)',
+    length_cm: 1534,
+    width_cm: 1564,
+    height_cm: 1524,
+    max_load_kg: 5070,
+    volume_m3: 3.66,
+    compatible_deck: ['main'],
+    note: '主舱加强型，最大载重ULD'
   },
   {
-    code: 'BULK',
-    altCode: 'BULK',
-    name: '散货舱',
-    type: 'bulk',
-    extLength: 0, extWidth: 0, extHeight: 0,
-    intLength: 0, intWidth: 0, intHeight: 0,
-    maxWeight: 6800, tareWeight: 0, maxLoad: 6800,
-    volume: 0,
-    compatibleDecks: ['bulk'],
-    color3D: '#6B7280',
-    cssDepth3D: '0px',
+    iata_code: 'BULK',
+    common_names: ['BULK', '散货'],
+    full_name: 'BULK (散货)',
+    length_cm: 0,
+    width_cm: 0,
+    height_cm: 0,
+    max_load_kg: 6800,
+    volume_m3: 0, // 无标准容积，按实际装载计算
+    compatible_deck: ['main', 'lower', 'nose'],
+    note: '散货，无集装器限制'
   },
 ];
 
-// 根据舱位获取可用ULD列表
-export function getCompatibleULDs(deck: 'main' | 'lower' | 'nose' | 'bulk'): ULDType[] {
-  return ULD_TYPES.filter(t => t.compatibleDecks.includes(deck));
+// 通过 IATA 代码或通俗名称查找 ULD 类型
+export function findULDType(code: string): ULDType | undefined {
+  const normalized = normalizeULDCode(code);
+  return ULD_TYPES.find(u => u.iata_code === normalized || u.common_names.some(n => n.toUpperCase() === normalized));
 }
 
-// 根据体积推荐ULD（最优填充率排序）
-export function recommendULD(volume_m3: number, weight_kg: number): ULDType[] {
-  const candidates = ULD_TYPES.filter(uld =>
-    uld.volume >= volume_m3 * 0.9 &&   // 预留5%膨胀
-    uld.maxLoad >= weight_kg &&
-    uld.type !== 'bulk'
-  );
+// ULD 通俗名称选项（用于 Select 组件）
+export function getULDNameOptions(): Array<{ value: string; label: string; sub: string }> {
+  return ULD_TYPES.filter(u => u.iata_code !== 'BULK').map(u => ({
+    value: u.iata_code,
+    label: u.iata_code,
+    sub: `${u.common_names.join('/')} · ${u.full_name} · ${u.volume_m3}m³ · 最大${u.max_load_kg}kg`,
+  }));
+}
 
-  return candidates
-    .map(uld => ({
-      ...uld,
-      fillRate: Math.min((volume_m3 / uld.volume) * 100, 100),
-    }))
+// 推荐 ULD（按货物特性）
+export function recommendULD(cargoWeight: number, cargoVolume: number, deck?: 'main' | 'lower'): ULDType[] {
+  return ULD_TYPES
+    .filter(u => {
+      if (u.iata_code === 'BULK') return false;
+      if (deck && !u.compatible_deck.includes(deck)) return false;
+      return u.max_load_kg >= cargoWeight;
+    })
     .sort((a, b) => {
-      // 优先：填充率80-100%之间最优
-      const aOptimal = a.fillRate >= 75 && a.fillRate <= 100;
-      const bOptimal = b.fillRate >= 75 && b.fillRate <= 100;
-      if (aOptimal && !bOptimal) return -1;
-      if (!aOptimal && bOptimal) return 1;
-      // 其次：填充率最接近100%
-      return Math.abs(a.fillRate - 85) - Math.abs(b.fillRate - 85);
-    });
+      // 优先：载重刚好够 + 填充率最优
+      const fillA = cargoVolume / a.volume_m3;
+      const fillB = cargoVolume / b.volume_m3;
+      const scoreA = fillA >= 0.5 && fillA <= 0.9 ? (1 - Math.abs(fillA - 0.72)) * 100 : 0;
+      const scoreB = fillB >= 0.5 && fillB <= 0.9 ? (1 - Math.abs(fillB - 0.72)) * 100 : 0;
+      return scoreB - scoreA || a.max_load_kg - b.max_load_kg;
+    })
+    .slice(0, 4);
 }
 
-// 货物填充评级
-export type FillRating = 'perfect' | 'good' | 'fair' | 'poor' | 'critical' | 'overload';
-
-export function rateFill(fillRate: number): { rating: FillRating; color: string; label: string } {
-  if (fillRate > 100) return { rating: 'overload', color: '#EF4444', label: '🚨 超载' };
-  if (fillRate >= 90) return { rating: 'perfect', color: '#10B981', label: '🟢 完美 (90-100%)' };
-  if (fillRate >= 75) return { rating: 'good', color: '#22C55E', label: '🟢 优秀 (75-89%)' };
-  if (fillRate >= 55) return { rating: 'fair', color: '#F59E0B', label: '🟡 一般 (55-74%)' };
-  if (fillRate >= 30) return { rating: 'poor', color: '#EF4444', label: '🔴 浪费 (30-54%)' };
-  return { rating: 'critical', color: '#DC2626', label: '⚫ 严重浪费 (<30%)' };
+// 填充率评分
+export function rateFill(volumeM3: number, uldCode: string): { rating: 'full' | 'good' | 'fair' | 'poor' | 'overload' | 'empty'; color: string; label: string; pct: number } {
+  const uld = findULDType(uldCode);
+  if (!uld || uld.volume_m3 === 0) return { rating: 'empty', color: '#94A3B8', label: '散货', pct: 0 };
+  const pct = volumeM3 / uld.volume_m3;
+  if (pct > 1) return { rating: 'overload', color: '#DC2626', label: '🔴 超载', pct: parseFloat((pct * 100).toFixed(0)) };
+  if (pct >= 0.9) return { rating: 'full', color: '#16A34A', label: '🟢 满载', pct: parseFloat((pct * 100).toFixed(0)) };
+  if (pct >= 0.7) return { rating: 'good', color: '#2563EB', label: '🔵 良好', pct: parseFloat((pct * 100).toFixed(0)) };
+  if (pct >= 0.4) return { rating: 'fair', color: '#F59E0B', label: '🟡 一般', pct: parseFloat((pct * 100).toFixed(0)) };
+  if (pct > 0) return { rating: 'poor', color: '#DC2626', label: '⚫ 利用率低', pct: parseFloat((pct * 100).toFixed(0)) };
+  return { rating: 'empty', color: '#94A3B8', label: '空载', pct: 0 };
 }
 
-// 体积重计算（IATA标准：/6000）
+// 体积重计算（IATA标准：长×宽×高 / 6000）
 export function calcVolumeWeight(length_cm: number, width_cm: number, height_cm: number): number {
-  return (length_cm * width_cm * height_cm) / 6000;
+  return Math.round((length_cm * width_cm * height_cm) / 6000);
 }
 
-// 计费重量（实际重 vs 体积重取大者）
+// 计费重量（实际重 vs 体积重 取大者，IATA规则）
 export function calcChargeableWeight(actualWeight: number, length: number, width: number, height: number): number {
   return Math.max(actualWeight, calcVolumeWeight(length, width, height));
 }
