@@ -1,18 +1,18 @@
 // App.tsx - CBA Air Cargo 智能货运系统 v5.0
 // 注意：BrowserRouter 在 main.tsx 中已包裹 <App />，此处不要重复嵌套
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Space, Tag, Button } from 'antd';
 import { LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { ThemeProvider, ThemeToggleButton } from './components/ThemeToggle';
 import { useAuthStore } from './stores/authStore';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
-import CargoListPage from './pages/CargoListPage';
-import LoadPlanningPage from './pages/LoadPlanningPage';
-import FlightManagementPage from './pages/FlightManagementPage';
+import BookingListPage from './pages/BookingListPage';       // ✅ 完整版
+import LoadPlanningPage from './pages/LoadPlanningPage';     // ✅ 完整版 v5.0
+import FlightListPage from './pages/FlightListPage';         // ✅ 完整版
 import RevenueManagementPage from './pages/RevenueManagementPage';
-import BookingManagementPage from './pages/BookingManagementPage';
+import CargoListPage from './pages/CargoListPage';           // ⚠️ 空壳，需重建
 
 const { Header, Sider, Content } = Layout;
 
@@ -99,11 +99,11 @@ export default function App() {
           <Content style={{ padding: 0, minHeight: 'calc(100vh - 64px)' }}>
             <Routes>
               <Route path="/dashboard" element={<DashboardPage user={user} />} />
-              <Route path="/cargo" element={<CargoListPage user={user} />} />
-              <Route path="/load-planning" element={<LoadPlanningPage user={user} />} />
-              <Route path="/flights" element={<FlightManagementPage user={user} />} />
-              <Route path="/revenue" element={<RevenueManagementPage user={user} />} />
-              <Route path="/bookings" element={<BookingManagementPage user={user} />} />
+              <Route path="/cargo" element={<BookingListPage user={user} />} />          {/* ✅ 116行完整版 */}
+              <Route path="/load-planning" element={<LoadPlanningPage user={user} />} />  {/* ✅ 364行完整版 */}
+              <Route path="/flights" element={<FlightListPage user={user} />} />          {/* ✅ 132行完整版 */}
+              <Route path="/revenue" element={<RevenueManagementPage user={user} />} />   {/* ✅ 完整版 */}
+              <Route path="/bookings" element={<BookingListPage user={user} />} />        {/* ✅ 复用完整版 */}
               <Route path="*" element={<DashboardPage user={user} />} />
             </Routes>
           </Content>

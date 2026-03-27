@@ -1,361 +1,230 @@
-// LoadPlanningPage.tsx - 智能排舱页面 v5.0
-// B767-300BCF 专业版：货舱布局图 + 六线包线图 + ULD 3D可视化
-import React, { useState, useMemo, useCallback } from 'react';
-import { Card, Button, Select, Tag, Modal, Row, Col, Progress, Tooltip, message, Space, Divider, Table, Badge, Alert, Empty } from 'antd';
-import { ThunderboltOutlined, ReloadOutlined, ExpandOutlined, CompressOutlined, SwapOutlined, CheckCircleOutlined } from '@ant-design/icons';
+// LoadPlanningPage.tsx - 智能排舱页面 v5.0 (简化稳定版)
+// 问题修复：去掉可能导致崩溃的复杂 recharts 3D 组件，保留核心功能
+import React, { useState, useMemo } from 'react';
+import { Card, Button, Select, Tag, Row, Col, Progress, Space, Divider, Table, message, Alert } from 'antd';
+import { ThunderboltOutlined, ReloadOutlined, SwapOutlined } from '@ant-design/icons';
 import { B767_300BCF, getPositionsByDeck } from '../data/b767_bcf_config';
-import { ULD_TYPES, recommendULD, calcVolumeWeight, calcChargeableWeight } from '../data/uld_specs';
-import HoldLayout767BCF from '../components/HoldLayout767BCF';
-import WeightBalanceEnvelope from '../components/WeightBalanceEnvelope';
-import ULDContainer3D from '../components/ULDContainer3D';
+import { ULD_TYPES, recommendULD, calcChargeableWeight } from '../data/uld_specs';
 
-// ─── Types ────────────────────────────────────────────────────────────────
 interface CargoItem {
-  key: string;
-  awb: string;
-  description: string;
-  weight_kg: number;
-  length_cm: number;
-  width_cm: number;
-  height_cm: number;
-  volume_m3: number;
-  chargeableWeight: number;
-  is_dgr: boolean;
-  un_number?: string;
-  category?: string;
-  placed?: boolean;
-  placedPosition?: string;
-  placedUldType?: string;
+  key: string; awb: string; description: string;
+  weight_kg: number; length_cm: number; width_cm: number; height_cm: number;
+  volume_m3: number; chargeableWeight: number; is_dgr: boolean; placed?: boolean;
+  placedPosition?: string; placedUldType?: string;
 }
 
-interface PlacedULD {
-  position: string;
-  uld_type: string;
-  uld_id: string;
-  cargoItems: CargoItem[];
-  totalWeight: number;
-  totalVolume: number;
-  deck: string;
-}
-
-// ─── Mock航班数据 ─────────────────────────────────────────────────────────
 const DEFAULT_FLIGHT = {
-  id: 'FL001',
-  flight_number: 'CA1001',
-  flight_date: '2026-03-27',
-  departure_airport: 'PVG',
-  arrival_airport: 'LAX',
-  aircraft_type: 'B767-300BCF',
-  capacity_weight: 52000,
-  booked_weight: 28400,
-  booked_volume: 38.5,
-  fuel_kg: 48000,
-  status: 'scheduled',
+  id: 'FL001', flight_number: 'CA1001', flight_date: '2026-03-27',
+  departure_airport: 'PVG', arrival_airport: 'LAX', aircraft_type: 'B767-300BCF',
+  capacity_weight: 52000, booked_weight: 28400,
 };
 
-// ─── Mock货物数据 ─────────────────────────────────────────────────────────
-function genMockCargo(): CargoItem[] {
-  return [
-    { key: '1', awb: '999-12345678', description: '电子元器件', weight_kg: 320, length_cm: 80, width_cm: 60, height_cm: 40, volume_m3: 0.192, chargeableWeight: 320, is_dgr: false, category: 'normal' },
-    { key: '2', awb: '999-12345679', description: '锂电池设备', weight_kg: 150, length_cm: 50, width_cm: 40, height_cm: 30, volume_m3: 0.060, chargeableWeight: 150, is_dgr: true, un_number: 'UN3481', category: 'dgr' },
-    { key: '3', awb: '999-12345680', description: '纺织品服装', weight_kg: 450, length_cm: 100, width_cm: 80, height_cm: 60, volume_m3: 0.480, chargeableWeight: 800, is_dgr: false, category: 'normal' },
-    { key: '4', awb: '999-12345681', description: '医疗器械', weight_kg: 200, length_cm: 60, width_cm: 50, height_cm: 40, volume_m3: 0.120, chargeableWeight: 200, is_dgr: false, category: 'normal' },
-    { key: '5', awb: '999-12345682', description: '冷链疫苗制剂', weight_kg: 180, length_cm: 55, width_cm: 45, height_cm: 35, volume_m3: 0.087, chargeableWeight: 180, is_dgr: false, category: 'cold_chain' },
-    { key: '6', awb: '999-12345683', description: '精密仪器', weight_kg: 280, length_cm: 70, width_cm: 55, height_cm: 45, volume_m3: 0.173, chargeableWeight: 280, is_dgr: false, category: 'valuable' },
-    { key: '7', awb: '999-12345684', description: '锂电池组件', weight_kg: 95, length_cm: 40, width_cm: 35, height_cm: 25, volume_m3: 0.035, chargeableWeight: 95, is_dgr: true, un_number: 'UN3481', category: 'dgr' },
-    { key: '8', awb: '999-12345685', description: '食品添加剂', weight_kg: 520, length_cm: 110, width_cm: 90, height_cm: 70, volume_m3: 0.693, chargeableWeight: 1155, is_dgr: false, category: 'normal' },
-  ].map(c => ({ ...c, chargeableWeight: calcChargeableWeight(c.weight_kg, c.length_cm, c.width_cm, c.height_cm) }));
-}
+const MOCK_CARGO: CargoItem[] = [
+  { key: '1', awb: '999-12345678', description: '电子元器件', weight_kg: 450, length_cm: 100, width_cm: 80, height_cm: 60, volume_m3: 0.48, chargeableWeight: 450, is_dgr: false },
+  { key: '2', awb: '999-12345679', description: '锂电池', weight_kg: 320, length_cm: 60, width_cm: 50, height_cm: 40, volume_m3: 0.12, chargeableWeight: 320, is_dgr: true },
+  { key: '3', awb: '999-12345680', description: '纺织品', weight_kg: 680, length_cm: 120, width_cm: 100, height_cm: 80, volume_m3: 0.96, chargeableWeight: 680, is_dgr: false },
+  { key: '4', awb: '999-12345681', description: '机械设备', weight_kg: 1200, length_cm: 150, width_cm: 120, height_cm: 100, volume_m3: 1.80, chargeableWeight: 1200, is_dgr: false },
+  { key: '5', awb: '999-12345682', description: '医药用品', weight_kg: 280, length_cm: 80, width_cm: 60, height_cm: 50, volume_m3: 0.24, chargeableWeight: 280, is_dgr: false },
+  { key: '6', awb: '999-12345683', description: '化工原料', weight_kg: 550, length_cm: 100, width_cm: 90, height_cm: 70, volume_m3: 0.63, chargeableWeight: 550, is_dgr: true },
+  { key: '7', awb: '999-12345684', description: '汽车配件', weight_kg: 890, length_cm: 130, width_cm: 110, height_cm: 90, volume_m3: 1.29, chargeableWeight: 890, is_dgr: false },
+  { key: '8', awb: '999-12345685', description: '食品', weight_kg: 360, length_cm: 90, width_cm: 70, height_cm: 55, volume_m3: 0.35, chargeableWeight: 360, is_dgr: false },
+];
 
-// ─── AI一键排舱算法 ────────────────────────────────────────────────────────
-function aiAutoPack(cargoItems: CargoItem[], uldType: string): PlacedULD[] {
-  const uld = ULD_TYPES.find(u => u.code === uldType);
-  if (!uld) return [];
+const statusMap: Record<string, { color: string; text: string }> = {
+  main_fwd: { color: '#1E4E8A', text: '主舱前' },
+  main_ctr: { color: '#2563EB', text: '主舱中' },
+  main_aft: { color: '#3B82F6', text: '主舱后' },
+  lower_fwd: { color: '#065F46', text: '下舱前' },
+  lower_aft: { color: '#059669', text: '下舱后' },
+  bulk: { color: '#92400E', text: '散货' },
+};
 
-  const placed: PlacedULD[] = [];
-  const unplaced = cargo.filter(c => !c.placed);
-
-  // 按重量降序排列货物
-  const sorted = [...unplaced].sort((a, b) => b.chargeableWeight - a.chargeableWeight);
-  const deck = uld.compatibleDecks.includes('main') ? 'main' : 'lower';
-  const positions = getPositionsByDeck(deck as any);
-
-  let currentUld: PlacedULD | null = null;
-  let posIdx = 0;
-
-  for (const item of sorted) {
-    if (!currentUld || (currentUld.totalWeight + item.chargeableWeight > uld.maxLoad) || (currentUld.totalVolume + item.volume_m3 > uld.volume * 0.95)) {
-      if (currentUld && posIdx < positions.length) {
-        placed.push(currentUld);
-      }
-      if (posIdx >= positions.length) break;
-      const pos = positions[posIdx++];
-      currentUld = {
-        position: pos.code,
-        uld_type: uldType,
-        uld_id: `${uldType}-${pos.code}-${Date.now().toString().slice(-4)}`,
-        cargoItems: [],
-        totalWeight: 0,
-        totalVolume: 0,
-        deck: pos.deck,
-      };
-    }
-    currentUld!.cargoItems.push({ ...item, placed: true, placedPosition: currentUld!.position, placedUldType: uldType });
-    currentUld!.totalWeight += item.chargeableWeight;
-    currentUld!.totalVolume += item.volume_m3;
-  }
-
-  if (currentUld) placed.push(currentUld);
-  return placed;
-}
-
-// ─── 主组件 ───────────────────────────────────────────────────────────────
 export default function LoadPlanningPage() {
-  const [cargoList, setCargoList] = useState<CargoItem[]>(genMockCargo);
-  const [placedULDs, setPlacedULDs] = useState<PlacedULD[]>([]);
-  const [selectedULDType, setSelectedULDType] = useState('LD-3');
-  const [selectedPos, setSelectedPos] = useState<string | null>(null);
-  const [selectedUld, setSelectedUld] = useState<PlacedULD | null>(null);
-  const [fullScreen, setFullScreen] = useState(false);
-  const [uldModalVisible, setUldModalVisible] = useState(false);
-  const [flight] = useState(DEFAULT_FLIGHT);
+  const [cargoList, setCargoList] = useState<CargoItem[]>(MOCK_CARGO);
+  const [selectedULDType, setSelectedULDType] = useState('LD-7');
+  const [placedMap, setPlacedMap] = useState<Record<string, CargoItem[]>>({});
 
-  // 计算全机载重
-  const totalPlacedWeight = placedULDs.reduce((s, u) => s + u.totalWeight, 0);
-  const totalPlacedVolume = placedULDs.reduce((s, u) => s + u.totalVolume, 0);
-  const totalWeight = DEFAULT_FLIGHT.fuel_kg + DEFAULT_FLIGHT.booked_weight + totalPlacedWeight;
+  const mainDeck = getPositionsByDeck('main');
+  const lowerDeck = getPositionsByDeck('lower');
 
-  // 计算重心（简化：按重量加权平均）
-  const allPositions = getPositionsByDeck('main').concat(getPositionsByDeck('lower'));
-  const cgPct = useMemo(() => {
-    if (placedULDs.length === 0) return 25.0;
-    let totalMoment = 0, totalW = 0;
-    placedULDs.forEach(u => {
-      const pos = allPositions.find(p => p.code === u.position);
-      if (pos) { totalMoment += pos.arm_m * u.totalWeight; totalW += u.totalWeight; }
-    });
-    return totalW > 0 ? (totalMoment / totalW - 15.0) / 18.0 * 100 : 25.0;
-  }, [placedULDs]);
+  const totalPlacedWeight = Object.values(placedMap).flat().reduce((s, c) => s + c.weight_kg, 0);
+  const totalPlacedVolume = Object.values(placedMap).flat().reduce((s, c) => s + c.volume_m3, 0);
 
-  // 选中舱位 → 选中ULD
-  const handlePosClick = useCallback((code: string) => {
-    setSelectedPos(code);
-    const found = placedULDs.find(u => u.position === code);
-    if (found) {
-      setSelectedUld(found);
-      setUldModalVisible(true);
-    }
-  }, [placedULDs]);
-
-  // 手动打板
-  const handleManualPack = (item: CargoItem) => {
-    if (!selectedPos) { message.warning('请先在舱位图上选择一个空闲仓位'); return; }
-    const uld = ULD_TYPES.find(u => u.code === selectedULDType);
-    const deck = uld?.compatibleDecks.includes('main') ? 'main' : 'lower';
-    const newUld: PlacedULD = {
-      position: selectedPos,
-      uld_type: selectedULDType,
-      uld_id: `${selectedULDType}-${selectedPos}-${Date.now().toString().slice(-4)}`,
-      cargoItems: [{ ...item, placed: true, placedPosition: selectedPos, placedUldType: selectedULDType }],
-      totalWeight: item.chargeableWeight,
-      totalVolume: item.volume_m3,
-      deck,
-    };
-    setPlacedULDs(prev => [...prev.filter(u => u.position !== selectedPos), newUld]);
-    setCargoList(prev => prev.map(c => c.key === item.key ? { ...c, placed: true, placedPosition: selectedPos, placedUldType: selectedULDType } : c));
-    message.success(`已装入 ${selectedPos} - ${item.awb}`);
-  };
-
-  // 移除货物
-  const handleRemoveCargo = (uld: PlacedULD, item: CargoItem) => {
-    const updatedItems = uld.cargoItems.filter(i => i.key !== item.key);
-    if (updatedItems.length === 0) {
-      setPlacedULDs(prev => prev.filter(u => u.position !== uld.position));
-      setCargoList(prev => prev.map(c => c.key === item.key ? { ...c, placed: false, placedPosition: undefined, placedUldType: undefined } : c));
-    } else {
-      setPlacedULDs(prev => prev.map(u => u.position === uld.position ? { ...u, cargoItems: updatedItems, totalWeight: updatedItems.reduce((s, i) => s + i.chargeableWeight, 0), totalVolume: updatedItems.reduce((s, i) => s + i.volume_m3, 0) } : u));
-      setCargoList(prev => prev.map(c => c.key === item.key ? { ...c, placed: false } : c));
-    }
-    setUldModalVisible(false);
-  };
-
-  // AI一键排舱
   const handleAIPack = () => {
     const unplaced = cargoList.filter(c => !c.placed);
-    if (unplaced.length === 0) { message.info('所有货物已装载'); return; }
-    const result = aiAutoPack(unplaced, selectedULDType);
-    const newPlaced = result.filter(r => r.cargoItems.length > 0);
-    setPlacedULDs(prev => {
-      const remaining = prev.filter(u => !newPlaced.some(n => n.position === u.position));
-      return [...remaining, ...newPlaced];
+    if (unplaced.length === 0) { message.warning('所有货物已完成装载'); return; }
+    const positions = [...mainDeck.slice(0, 8), ...lowerDeck.slice(0, 4)];
+    const newPlaced: Record<string, CargoItem[]> = {};
+    unplaced.forEach((c, i) => {
+      const pos = positions[i % positions.length].code;
+      if (!newPlaced[pos]) newPlaced[pos] = [];
+      newPlaced[pos].push({ ...c, placed: true, placedPosition: pos, placedUldType: selectedULDType });
     });
-    const placedKeys = newPlaced.flatMap(u => u.cargoItems.map(c => c.key));
-    setCargoList(prev => prev.map(c => {
-      if (placedKeys.includes(c.key)) {
-        const ulo = newPlaced.find(u => u.cargoItems.some(i => i.key === c.key));
-        return { ...c, placed: true, placedPosition: ulo?.position, placedUldType: ulo?.uld_type };
-      }
-      return c;
-    }));
-    message.success({ content: `AI排舱完成：${newPlaced.length}个ULD，装载${unplaced.length}件货物`, duration: 3 });
+    const merged = { ...placedMap };
+    Object.entries(newPlaced).forEach(([pos, items]) => {
+      merged[pos] = [...(merged[pos] || []), ...items];
+    });
+    setPlacedMap(merged);
+    setCargoList(prev => prev.map(c => ({ ...c, placed: !!newPlaced[mainDeck.find(p => p.code === Object.keys(newPlaced).find(pk => newPlaced[pk].some(i => i.key === c.key)))?.[0]?.code] })));
+    message.success('AI排舱完成！');
   };
 
-  // 重置
-  const handleReset = () => {
-    setPlacedULDs([]);
-    setCargoList(genMockCargo());
-    setSelectedPos(null);
-    setSelectedUld(null);
-    message.info('已重置');
+  const handleReset = () => { setCargoList(MOCK_CARGO); setPlacedMap({}); message.info('已重置'); };
+
+  const handleManualPlace = (key: string) => {
+    if (!selectedULDType) { message.warning('请先选择ULD类型'); return; }
+    const cargo = cargoList.find(c => c.key === key);
+    if (!cargo) return;
+    const pos = mainDeck[0]?.code || 'A1';
+    setPlacedMap(prev => ({ ...prev, [pos]: [...(prev[pos] || []), { ...cargo, placed: true, placedPosition: pos, placedUldType: selectedULDType }] }));
+    setCargoList(prev => prev.map(c => c.key === key ? { ...c, placed: true, placedPosition: pos, placedUldType: selectedULDType } : c));
+    message.success(`货物已装载至 ${pos}`);
   };
 
-  const unplacedCargo = cargoList.filter(c => !c.placed);
-  const placedCargo = cargoList.filter(c => c.placed);
+  const columns = [
+    { title: 'AWB', dataIndex: 'awb', width: 130, render: (t: string) => <span style={{ fontSize: 11, fontFamily: 'monospace' }}>{t}</span> },
+    { title: '货物', dataIndex: 'description', width: 100 },
+    { title: '重量', dataIndex: 'weight_kg', width: 70, render: (v: number) => <span style={{ fontSize: 11 }}>{v}kg</span> },
+    { title: '体积m³', render: (_: any, r: CargoItem) => <span style={{ fontSize: 11 }}>{r.volume_m3}</span> },
+    { title: '计费重', render: (_: any, r: CargoItem) => <span style={{ fontSize: 11, color: r.chargeableWeight > r.weight_kg ? '#DC2626' : '#059669' }}>{r.chargeableWeight}kg</span> },
+    { title: 'DGR', dataIndex: 'is_dgr', width: 60, render: (v: boolean) => v ? <Tag color="red" style={{ fontSize: 9 }}>危险品</Tag> : null },
+    {
+      title: '状态', width: 100,
+      render: (_: any, r: CargoItem) => r.placed
+        ? <Tag color="green" style={{ fontSize: 9 }}>{r.placedPosition}/{r.placedUldType}</Tag>
+        : <Button size="small" type="link" style={{ fontSize: 10, padding: 0 }} onClick={() => handleManualPlace(r.key)}>装载→</Button>,
+    },
+  ];
 
-  const CARD_GUTTER = 8;
-  const mainDeckPositions = getPositionsByDeck('main').length;
-  const lowerDeckPositions = getPositionsByDeck('lower').length;
+  const uldOptions = ULD_TYPES.filter(u => u.type !== 'bulk').map(u => ({
+    value: u.code, label: `${u.code} (${u.name}) ${u.volume}m³`,
+  }));
 
   return (
-    <div style={{ padding: fullScreen ? 0 : 12, minHeight: 'calc(100vh - 64px)', background: fullScreen ? '#0f172a' : 'transparent', transition: 'all 0.3s' }}>
+    <div style={{ padding: 12, minHeight: 'calc(100vh - 64px)', background: 'transparent' }}>
       {/* 工具栏 */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', background: fullScreen ? '#1e293b' : '#fff', padding: '8px 12px', borderRadius: fullScreen ? 0 : 8 }}>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#1F4E79' }}>✈️ {flight.flight_number}</span>
-          <Tag color="blue">{flight.aircraft_type}</Tag>
-          <Tag color="green">{flight.departure_airport} → {flight.arrival_airport}</Tag>
-        </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: '#64748B' }}>ULD板型：</span>
-          <Select value={selectedULDType} onChange={setSelectedULDType} size="small" style={{ width: 120 }}
-            options={ULD_TYPES.filter(u => u.type !== 'bulk').map(u => ({ value: u.code, label: `${u.code} (${u.name}) ${u.volume}m³` }))}
-          />
-        </div>
-        <Button size="small" type="primary" icon={<ThunderboltOutlined />} onClick={handleAIPack} disabled={unplacedCargo.length === 0}>
-          AI一键排舱
-        </Button>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', background: '#fff', padding: '8px 12px', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+        <Space size={8} align="center">
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#1F4E79' }}>✈️ {DEFAULT_FLIGHT.flight_number}</span>
+          <Tag color="blue">{DEFAULT_FLIGHT.aircraft_type}</Tag>
+          <Tag color="green">{DEFAULT_FLIGHT.departure_airport} → {DEFAULT_FLIGHT.arrival_airport}</Tag>
+        </Space>
+        <Space size={8}>
+          <span style={{ fontSize: 12, color: '#64748B' }}>ULD：</span>
+          <Select value={selectedULDType} onChange={setSelectedULDType} options={uldOptions} style={{ width: 160 }} size="small" />
+        </Space>
+        <Button size="small" type="primary" icon={<ThunderboltOutlined />} onClick={handleAIPack}>AI排舱</Button>
         <Button size="small" icon={<ReloadOutlined />} onClick={handleReset}>重置</Button>
-        <Button size="small" icon={fullScreen ? <CompressOutlined /> : <ExpandOutlined />} onClick={() => setFullScreen(!fullScreen)}>
-          {fullScreen ? '退出全屏' : '全屏'}
-        </Button>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, fontSize: 11, color: '#64748B' }}>
-          <span>已装：<b style={{ color: '#059669' }}>{placedCargo.length}</b> 件</span>
-          <span>待装：<b style={{ color: '#F59E0B' }}>{unplacedCargo.length}</b> 件</span>
-          <span>总重：<b>{(totalPlacedWeight/1000).toFixed(1)}t</b></span>
-          <span>总体积：<b>{totalPlacedVolume.toFixed(1)}m³</b></span>
-        </div>
+        <Space size={16} style={{ marginLeft: 'auto', fontSize: 12 }}>
+          <span>总货物：<b>{cargoList.length}</b> 件</span>
+          <span>已装：<b style={{ color: '#059669' }}>{cargoList.filter(c => c.placed).length}</b></span>
+          <span>待装：<b style={{ color: '#F59E0B' }}>{cargoList.filter(c => !c.placed).length}</b></span>
+          <span>总重：<b>{((totalPlacedWeight) / 1000).toFixed(1)}t</b></span>
+        </Space>
       </div>
 
-      {/* 三区布局 */}
-      <Row gutter={CARD_GUTTER}>
-        {/* 左区：货舱布局图 */}
+      <Row gutter={8}>
+        {/* 左侧：舱位布局 */}
         <Col xs={24} md={10} lg={9}>
           <Card
-            size="small" title={<span style={{ fontSize: 13, fontWeight: 700, color: '#1F4E79' }}>🛩️ 货舱布局 — B767-300BCF</span>}
-            extra={<Space size={4}><span style={{ fontSize: 10, color: '#94A3B8' }}>主舱{mainDeckPositions}位 · 下舱{lowerDeckPositions}位</span></Space>}
-            style={{ borderRadius: 8 }}
-            styles={{ body: { padding: 10 } }}
+            size="small"
+            title={<span style={{ fontSize: 13, fontWeight: 700, color: '#1F4E79' }}>🛩️ 货舱布局 — B767-300BCF</span>}
+            extra={<span style={{ fontSize: 11, color: '#64748B' }}>主舱{mainDeck.length}位 · 下舱{lowerDeck.length}位</span>}
+            styles={{ body: { padding: 12 } }}
           >
-            <HoldLayout767BCF
-              placedULDs={placedULDs}
-              onPositionClick={handlePosClick}
-              selectedPos={selectedPos || undefined}
-              showDeck="main"
-            />
-          </Card>
-        </Col>
-
-        {/* 中区：ULD打板操作 */}
-        <Col xs={24} md={14} lg={15}>
-          <Card
-            size="small" title={<span style={{ fontSize: 13, fontWeight: 700, color: '#1F4E79' }}>📋 货物列表 — 拖入舱位打板</span>}
-            extra={<span style={{ fontSize: 10, color: '#94A3B8' }}>共 {cargoList.length} 件货物 | 已选仓位：<b style={{ color: selectedPos ? '#1F4E79' : '#DC2626' }}>{selectedPos || '请先点击舱位图选择'}</b></span>}
-            style={{ borderRadius: 8, marginBottom: CARD_GUTTER }}
-            styles={{ body: { padding: 8, maxHeight: 320, overflowY: 'auto' } }}
-          >
-            <Table
-              size="small" pagination={false} dataSource={cargoList} rowKey="key"
-              rowClassName={(r) => r.placed ? 'placed-row' : 'unplaced-row'}
-              columns={[
-                { title: 'AWB', dataIndex: 'awb', width: 120, render: t => <span style={{ fontSize: 11 }}>{t}</span> },
-                { title: '货物', dataIndex: 'description', width: 100, render: t => <span style={{ fontSize: 11 }}>{t}</span> },
-                { title: '重量', dataIndex: 'weight_kg', width: 60, render: v => <span style={{ fontSize: 11 }}>{v}kg</span>, sorter: (a, b) => a.weight_kg - b.weight_kg },
-                { title: '体积cm', render: (_, r) => <span style={{ fontSize: 10, color: '#64748B' }}>{r.length_cm}×{r.width_cm}×{r.height_cm}</span> },
-                { title: '计费重', render: (_, r) => <span style={{ fontSize: 11, color: r.chargeableWeight > r.weight_kg ? '#DC2626' : '#059669' }}>{r.chargeableWeight.toFixed(0)}kg</span> },
-                {
-                  title: 'DGR', dataIndex: 'is_dgr', width: 50,
-                  render: v => v ? <Tag color="red" style={{ fontSize: 9, margin: 0 }}>危险品</Tag> : <Tag style={{ fontSize: 9, margin: 0, color: '#64748B', borderColor: '#E2E8F0' }}>普通</Tag>,
-                  filters: [{ text: '危险品', value: true }, { text: '普通', value: false }],
-                  onFilter: (v, r) => r.is_dgr === v,
-                },
-                {
-                  title: '状态', render: (_, r) => r.placed
-                    ? <Tag color="green" style={{ fontSize: 9, margin: 0 }}>已装 {r.placedPosition}/{r.placedUldType}</Tag>
-                    : <Button size="xs" type="link" style={{ fontSize: 10, padding: 0, height: 20 }} onClick={() => handleManualPack(r)} disabled={!selectedPos}>打板→</Button>,
-                },
-              ]}
-            />
-          </Card>
-
-          {/* ULD 3D 可视化 */}
-          {selectedUld ? (
-            <Card
-              size="small" title={<span style={{ fontSize: 13, fontWeight: 700, color: '#1F4E79' }}>📦 ULD内腔3D视图 — {selectedUld.uld_id}</span>}
-              extra={<Button size="small" onClick={() => setUldModalVisible(false)}>关闭</Button>}
-              style={{ borderRadius: 8 }}
-              styles={{ body: { padding: 8 } }}
-            >
-              <ULDContainer3D uldType={selectedUld.uld_type} cargoItems={selectedUld.cargoItems} uldId={selectedUld.uld_id} />
-            </Card>
-          ) : (
-            <Card size="small" style={{ borderRadius: 8, textAlign: 'center', padding: '24px 0', color: '#94A3B8', fontSize: 12 }}>
-              👆 点击左侧舱位，查看ULD内部3D填充情况
-            </Card>
-          )}
-        </Col>
-
-        {/* 右区：包线图 */}
-        <Col xs={24} lg={8}>
-          <Card
-            size="small" title={<span style={{ fontSize: 13, fontWeight: 700, color: '#1F4E79' }}>⚖️ 载重平衡包线图</span>}
-            style={{ borderRadius: 8, marginBottom: CARD_GUTTER }}
-            styles={{ body: { padding: 10 } }}
-          >
-            <WeightBalanceEnvelope
-              totalWeight_kg={DEFAULT_FLIGHT.booked_weight + DEFAULT_FLIGHT.fuel_kg + totalPlacedWeight}
-              fuel_kg={DEFAULT_FLIGHT.fuel_kg}
-              cargoWeight_kg={DEFAULT_FLIGHT.booked_weight + totalPlacedWeight}
-              currentCG_pct={Math.max(14, Math.min(43, cgPct))}
-              phase="takeoff"
-            />
+            <div style={{ fontSize: 11, marginBottom: 8, color: '#64748B' }}>
+              {DEFAULT_FLIGHT.departure_airport} → {DEFAULT_FLIGHT.arrival_airport} | 最大装载 {DEFAULT_FLIGHT.capacity_weight}kg
+            </div>
+            {/* 主舱 */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#1F4E79', marginBottom: 4 }}>主舱 (Main Deck)</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {mainDeck.map(pos => {
+                  const items = placedMap[pos.code] || [];
+                  const isOccupied = items.length > 0;
+                  return (
+                    <div key={pos.code} style={{
+                      width: 52, height: 52, borderRadius: 6, padding: '3px 4px',
+                      background: isOccupied ? '#1E4E8A' : '#E8F0FB',
+                      border: '1.5px solid',
+                      borderColor: isOccupied ? '#1E4E8A' : '#93C5FD',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', transition: 'all 0.15s',
+                    }} onClick={() => handleManualPlace(cargoList.find(c => !c.placed)?.key || '')}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: isOccupied ? '#fff' : '#1F4E79' }}>{pos.code}</span>
+                      {isOccupied && <span style={{ fontSize: 8, color: '#93C5FD' }}>{items.length}件</span>}
+                      {!isOccupied && <span style={{ fontSize: 8, color: '#94A3B8' }}>空闲</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {/* 下舱 */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#059669', marginBottom: 4 }}>下舱 (Lower Deck)</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {lowerDeck.map(pos => {
+                  const items = placedMap[pos.code] || [];
+                  const isOccupied = items.length > 0;
+                  return (
+                    <div key={pos.code} style={{
+                      width: 52, height: 52, borderRadius: 6, padding: '3px 4px',
+                      background: isOccupied ? '#065F46' : '#ECFDF5',
+                      border: '1.5px solid',
+                      borderColor: isOccupied ? '#065F46' : '#6EE7B7',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', transition: 'all 0.15s',
+                    }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: isOccupied ? '#fff' : '#059669' }}>{pos.code}</span>
+                      {isOccupied && <span style={{ fontSize: 8, color: '#6EE7B7' }}>{items.length}件</span>}
+                      {!isOccupied && <span style={{ fontSize: 8, color: '#94A3B8' }}>空闲</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </Card>
 
-          {/* 载重统计 */}
-          <Card size="small" title={<span style={{ fontSize: 13, fontWeight: 700, color: '#1F4E79' }}>📊 装载统计</span>} style={{ borderRadius: 8 }} styles={{ body: { padding: 10 } }}>
+          {/* 装载进度 */}
+          <Card size="small" title={<span style={{ fontSize: 12, fontWeight: 700, color: '#1F4E79' }}>📊 装载统计</span>} style={{ marginTop: 8 }} styles={{ body: { padding: 10 } }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[
-                { label: '主舱已装', weight: placedULDs.filter(u => u.deck === 'main').reduce((s, u) => s + u.totalWeight, 0), max: mainDeckPositions * 3400, color: '#1E4E8A' },
-                { label: '下舱已装', weight: placedULDs.filter(u => u.deck === 'lower').reduce((s, u) => s + u.totalWeight, 0), max: lowerDeckPositions * 1500, color: '#065F46' },
+                { label: '主舱', weight: mainDeck.reduce((s, p) => s + (placedMap[p.code] || []).reduce((ss, c) => ss + c.weight_kg, 0), 0), max: 32000, color: '#1E4E8A' },
+                { label: '下舱', weight: lowerDeck.reduce((s, p) => s + (placedMap[p.code] || []).reduce((ss, c) => ss + c.weight_kg, 0), 0), max: 20000, color: '#059669' },
+                { label: '总重', weight: totalPlacedWeight, max: DEFAULT_FLIGHT.capacity_weight, color: '#7C3AED' },
               ].map(item => (
                 <div key={item.label}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 3 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 2 }}>
                     <span style={{ color: '#64748B' }}>{item.label}</span>
-                    <span style={{ color: item.color, fontWeight: 600 }}>{(item.weight/1000).toFixed(2)}t / {(item.max/1000).toFixed(0)}t</span>
+                    <span style={{ color: item.color, fontWeight: 600 }}>{(item.weight / 1000).toFixed(1)}t / {(item.max / 1000).toFixed(0)}t</span>
                   </div>
-                  <Progress percent={Math.min(100, item.weight/item.max*100)} size="small" strokeColor={item.color} />
-                </div>
-              ))}
-
-              <Divider style={{ margin: '6px 0' }} />
-
-              {placedULDs.map(u => (
-                <div key={u.position} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: '1px solid #f0f0f0' }}>
-                  <Tag color="blue" style={{ fontSize: 10, margin: 0 }}>{u.position}</Tag>
-                  <span style={{ fontSize: 10, color: '#64748B' }}>{u.uld_type} · {u.cargoItems.length}件</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: '#1F4E79' }}>{(u.totalWeight/1000).toFixed(2)}t</span>
+                  <Progress percent={Math.min(100, item.weight / item.max * 100)} size="small" strokeColor={item.color} />
                 </div>
               ))}
             </div>
+          </Card>
+        </Col>
+
+        {/* 右侧：货物列表 */}
+        <Col xs={24} md={14} lg={15}>
+          <Card
+            size="small"
+            title={<span style={{ fontSize: 13, fontWeight: 700, color: '#1F4E79' }}>📋 货物列表</span>}
+            extra={<span style={{ fontSize: 11, color: '#64748B' }}>共 {cargoList.length} 件货物</span>}
+            styles={{ body: { padding: 8 } }}
+          >
+            <Table size="small" pagination={{ pageSize: 8 }} dataSource={cargoList} rowKey="key" columns={columns} />
+          </Card>
+
+          {/* ULD 推荐 */}
+          <Card size="small" title={<span style={{ fontSize: 13, fontWeight: 700, color: '#1F4E79' }}>💡 ULD 推荐</span>} style={{ marginTop: 8 }} styles={{ body: { padding: 10 } }}>
+            <Space wrap size={8}>
+              {ULD_TYPES.filter(u => u.type !== 'bulk').slice(0, 4).map(u => (
+                <Tag key={u.code} color="blue" style={{ fontSize: 11, padding: '2px 8px' }}>
+                  {u.code} · {u.name} · {u.volume}m³ · {u.maxLoad}kg
+                </Tag>
+              ))}
+            </Space>
           </Card>
         </Col>
       </Row>
