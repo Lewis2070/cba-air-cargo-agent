@@ -1,350 +1,388 @@
-// CBA v5.2 True 3D ULD Visualizer with 0-720° rotation
-import React, { useState, useMemo, useRef } from 'react';
-import { Slider, Tooltip, Tag, Typography, Space, Button } from 'antd';
-import { DeleteOutlined, ExpandOutlined } from '@ant-design/icons';
-import { findULDType, rateFill } from '../../data/uld_specs';
+/**
+ * CBA v5.2 — True 3D ULD Packing Visualizer
+ * - ULD rendered as a transparent wireframe 3D container
+ * - Each cargo item rendered as a proportional 3D box (front + right + top faces)
+ * - Boxes sized proportionally to real L×W×H dimensions
+ * - Boxes placed inside ULD in realistic packing positions
+ */
+import React, { useState, useMemo } from 'react';
+import { Slider, Tag, Typography, Space, Button, Tooltip } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
+import { findULDType } from '../../data/uld_specs';
 import type { UI, CI } from './CargoTypes';
 
-const CC: Record<string, string> = {
-  normal: '#3B82F6',
-  dgr: '#EF4444',
-  live_animal: '#16A34A',
-  perishable: '#F59E0B',
+const { Text } = Typography;
+
+// Category colors with light/dark face variants
+const C = {
+  normal:     { front: '#3B82F6', right: '#1D4ED8', top: '#60A5FA' },
+  dgr:        { front: '#EF4444', right: '#B91C1C', top: '#F87171' },
+  live_animal:{ front: '#16A34A', right: '#15803D', top: '#4ADE80' },
+  perishable: { front: '#F59E0B', right: '#B45309', top: '#FCD34D' },
 };
 
 interface Props {
   uld: UI;
-  onRemove: (uldId: string) => void;
+  onRemove: (id: string) => void;
   onCargoRemove?: (uldId: string, cargoId: string) => void;
   onOpenModal?: (uld: UI) => void;
   compact?: boolean;
 }
 
-// Real-world ULD dimensions (cm) for true 3D ratio
-const ULD_SPEC: Record<string, { l: number; w: number; h: number }> = {
-  'LD-7': { l: 223, w: 153, h: 163 }, // LD-7/RAP Q7
-  'LD-6': { l: 153, w: 153, h: 163 }, // LD-6/AKE Q6
-  'LD-3': { l: 153, w: 153, h: 163 }, // LD-3/AKE
-  'LD-2': { l: 146, w: 118, h: 163 }, // LD-2/AAU
-  'LD-8': { l: 223, w: 136, h: 163 }, // LD-8/AMU
-  'LD-11': { l: 153, w: 118, h: 163 }, // LD-11/AGK
+// ULD real-world dimensions (cm) — IATA standard
+const ULD_DIMS: Record<string, { L: number; W: number; H: number }> = {
+  'LD-7': { L: 223, W: 153, H: 163 },
+  'LD-6': { L: 153, W: 153, H: 163 }, // Q6/AKE
+  'LD-3': { L: 153, W: 153, H: 114 }, // AKE — lower height
+  'LD-2': { L: 146, W: 118, H: 163 },
+  'LD-8': { L: 223, W: 136, H: 163 },
+  'LD-11':{ L: 153, W: 118, H: 163 },
 };
 
-function getSpec(code: string) {
-  return ULD_SPEC[code] || ULD_SPEC['LD-6'];
+function getULDims(code: string) {
+  return ULD_DIMS[code] || ULD_DIMS['LD-6'];
 }
 
-// Convert 3D rotation angle to visibility
-// angle: 0-720 degrees
-function getFace(deg: number): 'front' | 'right' | 'back' | 'left' | 'front-back' {
-  const d = deg % 360;
-  if (d < 70 || d > 315) return 'front';
-  if (d >= 70 && d < 115) return 'right';
-  if (d >= 115 && d < 245) return 'back';
-  if (d >= 245 && d <= 315) return 'left';
-  return 'front';
+// --- 3D Box faces ---
+function BoxFace({ face, style }: { face: string; style: React.CSSProperties }) {
+  return <div style={{ position: 'absolute', ...style, backfaceVisibility: 'hidden' }}>{face}</div>;
 }
 
-// Compute CSS transform for current rotation
-function getTransform(deg: number): string {
-  return `rotateY(${deg}deg)`;
+// Single cargo item as a 3D box
+function CargoBox3D({
+  cargo,
+  pxPerCm,
+  offsetX, offsetY, offsetZ,
+  depthPx,
+}: {
+  cargo: CI;
+  pxPerCm: number;
+  offsetX: number; offsetY: number; offsetZ: number;
+  depthPx: number;
+}) {
+  const colors = C[cargo.category] || C.normal;
+  const L = cargo.length_cm * pxPerCm;
+  const W = cargo.width_cm * pxPerCm;
+  const H = cargo.height_cm * pxPerCm;
+  const z = depthPx;
+
+  const common: React.CSSProperties = {
+    position: 'absolute',
+    transformStyle: 'preserve-3d',
+    backfaceVisibility: 'hidden',
+  };
+
+  return (
+    <div style={{ ...common, transform: `translate3d(${offsetX}px, ${offsetY}px, ${offsetZ}px)` }}>
+      {/* FRONT face */}
+      <div style={{
+        ...common,
+        width: L, height: H,
+        background: colors.front,
+        border: '1px solid rgba(255,255,255,0.4)',
+        boxShadow: 'inset 0 0 8px rgba(0,0,0,0.2)',
+        transform: 'translateZ(0px)',
+        borderRadius: '2px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden',
+      }}>
+        <span style={{ fontSize: 6, color: '#fff', fontWeight: 700, textAlign: 'center', lineHeight: 1.2, padding: 2, pointerEvents: 'none' }}>
+          {cargo.description.length > 8 ? cargo.description.slice(0, 8) + '…' : cargo.description}
+          <br/><span style={{ fontSize: 5, opacity: 0.85 }}>{cargo.length_cm}×{cargo.width_cm}×{cargo.height_cm}</span>
+        </span>
+      </div>
+      {/* RIGHT face */}
+      <div style={{
+        ...common,
+        width: z, height: H,
+        background: colors.right,
+        border: '1px solid rgba(0,0,0,0.2)',
+        transform: `translateX(${L}px) rotateY(90deg)`,
+        borderRadius: '2px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span style={{ fontSize: 6, color: 'rgba(255,255,255,0.8)', transform: 'rotate(90deg)', whiteSpace: 'nowrap' }}>
+          {cargo.weight_kg}kg
+        </span>
+      </div>
+      {/* TOP face */}
+      <div style={{
+        ...common,
+        width: L, height: z,
+        background: colors.top,
+        border: '1px solid rgba(255,255,255,0.4)',
+        transform: `translateY(-${z}px) rotateX(-90deg)`,
+        borderRadius: '2px',
+      }} />
+    </div>
+  );
+}
+
+// Main ULD 3D container
+function ULDFrame3D({ L, W, H, color, fill }: { L: number; W: number; H: number; color: string; fill: string }) {
+  const frame: React.CSSProperties = {
+    position: 'absolute',
+    transformStyle: 'preserve-3d',
+    backfaceVisibility: 'hidden',
+    pointerEvents: 'none',
+  };
+  return (
+    <>
+      {/* FRONT */}
+      <div style={{ ...frame, width: L, height: H, border: `2px solid ${color}`, background: fill ? `${fill}22` : 'transparent', transform: 'translateZ(0px)' }} />
+      {/* BACK */}
+      <div style={{ ...frame, width: L, height: H, border: `2px solid ${color}`, background: 'transparent', transform: `translateZ(${W}px)` }} />
+      {/* RIGHT */}
+      <div style={{ ...frame, width: W, height: H, border: `2px solid ${color}`, background: 'transparent', transform: `translateX(${L}px) rotateY(90deg)` }} />
+      {/* LEFT */}
+      <div style={{ ...frame, width: W, height: H, border: `2px solid ${color}`, background: 'transparent', transform: 'rotateY(-90deg)' }} />
+      {/* TOP */}
+      <div style={{ ...frame, width: L, height: W, border: `2px solid ${color}`, background: 'transparent', transform: `translateY(-${W}px) rotateX(-90deg)` }} />
+    </>
+  );
 }
 
 export default function ULD3DView({ uld, onRemove, onCargoRemove, onOpenModal, compact = false }: Props) {
-  const [rotation, setRotation] = useState(0); // 0-720
-  const ud = findULDType(uld.uld_code);
-  const spec = getSpec(uld.uld_code);
-  const totV = uld.cargoItems.reduce((s, c) => s + c.volume_m3, 0);
-  const fi = rateFill(totV, uld.uld_code);
-  const maxV = ud?.volume_m3 || 3.66;
-  const totW = uld.cargoItems.reduce((s, c) => s + c.weight_kg, 0);
-  const remV = Math.max(0, maxV - totV);
-  const face = getFace(rotation);
+  const [rotation, setRotation] = useState(0);
+  const udims = getULDims(uld.uld_code);
 
-  // Grid layout for front face
-  // Use 3D scale to match real ULD dimensions
-  const containerL = compact ? 148 : 196; // 3D viewport width
-  const containerW = compact ? 36 : 52;   // 3D depth (right face)
-  const containerH = compact ? 90 : 120;  // 3D height
+  // Container pixel scale — fit in available space
+  const maxULDL = compact ? 120 : 200;
+  const pxPerCm = maxULDL / Math.max(udims.L, udims.W, udims.H);
 
-  // Front face: cargo arranged in rows (length × width plane)
-  // Each column = spec.l_cm / 6, each row = spec.w_cm / 2
-  const COLS = 6;
-  const ROWS = 4;
-  const cellL = containerL / COLS; // ~24px per cell
-  const cellH = containerH / ROWS; // ~22-30px per cell
+  const uldL = udims.L * pxPerCm;
+  const uldW = udims.W * pxPerCm; // depth (Z)
+  const uldH = udims.H * pxPerCm;
 
-  function getCargoStyle(c: CI, idx: number): React.CSSProperties {
-    // Arrange in grid order: row-major
-    const col = idx % COLS;
-    const row = Math.floor(idx / COLS);
-    const visibleCols = Math.min(COLS, Math.ceil(Math.sqrt(uld.cargoItems.length * (spec.l / spec.w))));
-    const visibleCol = idx % visibleCols;
-    const visibleRow = Math.floor(idx / visibleCols);
-    const w = (containerL * 0.88) / visibleCols - 2;
-    const h = (containerH * 0.78) / ROWS - 2;
-    return {
-      position: 'absolute',
-      left: visibleCol * ((containerL * 0.88) / visibleCols) + 1,
-      top: visibleRow * ((containerH * 0.78) / ROWS) + containerH * 0.12,
-      width: Math.max(8, Math.min(w, cellL * 1.8)),
-      height: Math.max(6, Math.min(h, cellH * 1.5)),
-      background: CC[c.category],
-      borderRadius: 2,
-      border: c.category !== 'normal' ? '1.5px solid rgba(255,255,255,0.9)' : 'none',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-      zIndex: 2,
-      transform: 'translateZ(0)', // ensures it stays in front face plane
-    };
+  // Pack cargo items into the ULD — row-by-row, layer-by-layer
+  const placedBoxes = useMemo(() => {
+    const sorted = [...uld.cargoItems].sort((a, b) => {
+      // Larger items first
+      const volA = a.length_cm * a.width_cm * a.height_cm;
+      const volB = b.length_cm * b.width_cm * b.height_cm;
+      return volB - volA;
+    });
+
+    const boxes: Array<{ cargo: CI; ox: number; oy: number; oz: number }> = [];
+    // Simple gravity-packing simulation:
+    // We fill from bottom, row by row, layer by layer
+    // Row = along L, Column = along W, Layer = along H
+    let currentZ = 0; // current fill depth along W axis
+    let currentX = 0; // current position along L axis
+    let currentY = 0; // current layer height along H axis
+    let rowMaxH = 0;
+    let rowMaxZ = 0;
+
+    for (const c of sorted) {
+      const cL = c.length_cm * pxPerCm;
+      const cW = c.width_cm * pxPerCm;
+      const cH = c.height_cm * pxPerCm;
+
+      // Try to fit in current row
+      if (currentX + cL <= uldL && Math.max(currentZ, rowMaxZ) + cW <= uldW && currentY + cH <= uldH) {
+        const oz = currentZ;
+        const ox = currentX;
+        const oy = uldH - currentY - cH; // Y measured from bottom
+        boxes.push({ cargo: c, ox, oy, oz });
+        currentX += cL;
+        rowMaxH = Math.max(rowMaxH, cH);
+        rowMaxZ = Math.max(rowMaxZ, currentZ + cW);
+      } else if (currentY + rowMaxH + cH <= uldH) {
+        // Start new row (same layer)
+        currentX = 0;
+        currentZ = 0;
+        currentY += rowMaxH;
+        const oz = 0;
+        const ox = 0;
+        const oy = uldH - currentY - cH;
+        boxes.push({ cargo: c, ox, oy, oz });
+        currentX = cL;
+        rowMaxH = cH;
+        rowMaxZ = cW;
+      } else {
+        // No more space — skip (or stack on top)
+        break;
+      }
+    }
+    return boxes;
+  }, [uld.cargoItems, uldL, uldW, uldH, pxPerCm]);
+
+  const fillPct = uld.cargoItems.reduce((s, c) => s + c.volume_m3, 0) / (udims.L * udims.W * udims.H / 1e6);
+  const fillColor = fillPct > 0.85 ? '#EF4444' : fillPct > 0.6 ? '#F59E0B' : '#16A34A';
+
+  if (compact) {
+    // Compact: show mini 3D + key info
+    return (
+      <div style={{ userSelect: 'none' }}>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#1F4E79' }}>{uld.uld_serial || uld.uld_code}</span>
+          <span style={{ fontSize: 9, color: '#64748B' }}>{uld.cargoItems.length}件</span>
+          <Tag color={fillColor} style={{ fontSize: 8, margin: 0 }}>{Math.round(fillPct * 100)}%</Tag>
+          {uld.position && <Tag style={{ fontSize: 8, margin: 0 }}>{uld.position}</Tag>}
+        </div>
+        <div style={{ perspective: 400, perspectiveOrigin: 'center' }}>
+          <div style={{
+            width: uldL, height: uldH,
+            position: 'relative',
+            transform: `rotateX(-8deg) rotateY(${-20}deg)`,
+            transformStyle: 'preserve-3d',
+          }}>
+            <div style={{
+              position: 'absolute', width: uldL, height: uldH,
+              border: '1.5px solid #94A3B8',
+              background: '#F8FAFC',
+              borderRadius: 3,
+              transform: 'translateZ(2px)',
+              overflow: 'hidden',
+              display: 'flex', flexWrap: 'wrap', gap: 1, padding: 2,
+              alignContent: 'flex-start',
+            }}>
+              {uld.cargoItems.slice(0, 12).map((c, i) => (
+                <div key={c.id} style={{
+                  width: 12, height: 10,
+                  background: C[c.category]?.front || '#3B82F6',
+                  borderRadius: 2,
+                  flexShrink: 0,
+                }} title={`${c.description} ${c.weight_kg}kg`} />
+              ))}
+            </div>
+            <div style={{
+              position: 'absolute', width: uldL, height: 3,
+              background: '#CBD5E1',
+              transform: `translateY(${uldH}px) rotateX(-90deg)`,
+              transformOrigin: 'top',
+            }} />
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  // Right side face: cargo stacked vertically (depth × height plane)
-  // Left side face: cargo stacked from opposite direction
-  const rightFaceWidth = containerW;
-  const rightFaceHeight = containerH;
-  const maxStackH = (rightFaceHeight * 0.82) / uld.cargoItems.length;
-
+  // Full 3D modal view
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ userSelect: 'none', padding: 4 }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <Space size={4} wrap>
-          <Tag color={uld.deck === 'main' ? 'blue' : 'green'} style={{ margin: 0, fontSize: 10, fontWeight: 700 }}>
-            {uld.uld_code}
-          </Tag>
-          <Typography.Text style={{ fontSize: 10, color: '#64748B' }}>{uld.uld_full_name}</Typography.Text>
-          {uld.position && <Tag color="cyan" style={{ fontSize: 9 }}>{uld.position}</Tag>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <Space size={4}>
+          <Text style={{ fontSize: 12, fontWeight: 700, color: '#1F4E79' }}>{uld.uld_serial || uld.uld_code}</Text>
+          <Text style={{ fontSize: 10, color: '#64748B' }}>{udims.L}×{udims.W}×{udims.H}cm</Text>
+          <Text style={{ fontSize: 10, color: '#64748B' }}>{uld.cargoItems.length}件</Text>
+          <Tag color={fillColor} style={{ fontSize: 9, margin: 0 }}>{Math.round(fillPct * 100)}% 装载</Tag>
         </Space>
         <Space size={2}>
-          {onOpenModal && (
-            <Tooltip title="大图查看">
-              <Button size="small" type="text" icon={<ExpandOutlined />} onClick={() => onOpenModal(uld)}
-                style={{ fontSize: 10, color: '#2563EB', padding: 0, width: 14, height: 14 }} />
+          {onCargoRemove && (
+            <Tooltip title="移除此ULD">
+              <Button size="small" icon={<DeleteOutlined />} danger onClick={() => onRemove(uld.id)} />
             </Tooltip>
           )}
-          <Button size="small" type="text" icon={<DeleteOutlined />} onClick={() => onRemove(uld.id)}
-            style={{ color: '#EF4444', fontSize: 10, padding: 0, width: 16, height: 16 }} />
+          {onOpenModal && (
+            <Button size="small" onClick={() => onOpenModal(uld)} style={{ fontSize: 9 }}>全屏</Button>
+          )}
         </Space>
+      </div>
+
+      {/* Rotation slider */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <Text style={{ fontSize: 9, color: '#64748B', width: 36 }}>旋转 {rotation}°</Text>
+        <Slider
+          min={0} max={720} value={rotation}
+          onChange={setRotation}
+          tooltip={{ formatter: (v) => `${v}°` }}
+          style={{ flex: 1 }}
+          styles={{ track: { background: '#3B82F6' } }}
+        />
+        <Button size="small" onClick={() => setRotation(0)} style={{ fontSize: 9 }}>重置</Button>
       </div>
 
       {/* 3D Viewport */}
       <div style={{
         perspective: 800,
-        display: 'flex',
-        justifyContent: 'center',
-        marginBottom: 6,
-        background: 'linear-gradient(135deg, #0f1923 0%, #1a2a3a 100%)',
+        perspectiveOrigin: '50% 40%',
+        background: 'linear-gradient(180deg, #F1F5F9 0%, #E2E8F0 100%)',
         borderRadius: 8,
-        padding: '8px 4px 4px',
-        border: '1px solid rgba(255,255,255,0.06)',
+        padding: '12px 8px 8px',
+        overflow: 'hidden',
       }}>
-        {/* 3D Container — rotates based on slider */}
         <div style={{
-          width: containerL + containerW + 4,
-          height: containerH + 14,
-          position: 'relative',
-          transformStyle: 'preserve-3d',
-          transform: `rotateX(-12deg) ${getTransform(rotation)}`,
-          transition: 'transform 0.05s linear',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 24,
         }}>
-          {/* Front face */}
-          <div style={{
-            position: 'absolute',
-            bottom: containerW,
-            left: 0,
-            width: containerL,
-            height: containerH,
-            background: 'rgba(30, 78, 138, 0.10)',
-            border: '2px solid #1E4E8A',
-            transform: 'translateZ(0px)',
-            borderRadius: 4,
-            overflow: 'hidden',
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignContent: 'flex-start',
-            backfaceVisibility: 'hidden',
-          }}>
-            {/* Grid lines overlay */}
+          {/* 3D scene */}
+          <div style={{ perspective: 800, perspectiveOrigin: '50% 50%' }}>
             <div style={{
-              position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
-              backgroundImage: 'linear-gradient(rgba(30,78,138,0.15) 1px,transparent 1px), linear-gradient(90deg, rgba(30,78,138,0.15) 1px,transparent 1px)',
-              backgroundSize: `${containerL / 4}px ${(containerH * 0.82) / 4}px`,
-              backgroundPosition: '0 12%',
-            }} />
-            {uld.cargoItems.length === 0 ? (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Typography.Text style={{ fontSize: 9, color: '#475569' }}>拖入货物</Typography.Text>
-              </div>
-            ) : (
-              uld.cargoItems.map((c, i) => (
-                <Tooltip key={c.id} title={
-                  <div style={{ fontSize: 10, lineHeight: 1.8 }}>
-                    <b>{c.awb}</b><br />{c.description}<br />
-                    <span style={{ color: '#93C5FD' }}>{c.length_cm}×{c.width_cm}×{c.height_cm}cm</span><br />
-                    {c.weight_kg}kg | {c.volume_m3}m³<br />
-                    {c.dgr_class && <span style={{ color: '#FCA5A5' }}>⚠ {c.dgr_class}类 {c.un_number}</span>}
-                    {c.category === 'live_animal' && ' 🐾活体'}
-                    {c.temperature === 'chill' && ' ❄冷藏'}
-                  </div>
-                }>
-                  <div style={getCargoStyle(c, i)}>
-                    {cellL > 18 && cellH > 10 && (
-                      <Typography.Text style={{ fontSize: 5.5, color: '#fff', fontWeight: 700, textAlign: 'center', padding: '0 1px', lineHeight: 1.1 }}>
-                        {c.awb.split('-')[1]?.slice(-4)}
-                      </Typography.Text>
-                    )}
-                  </div>
-                </Tooltip>
-              ))
-            )}
-            {/* ULD dimension label */}
-            <div style={{
-              position: 'absolute', bottom: 1, right: 2, fontSize: 7, color: 'rgba(30,78,138,0.5)',
-              fontFamily: 'monospace', zIndex: 3,
+              position: 'relative',
+              width: uldL + 60, height: uldH + 40,
+              transformStyle: 'preserve-3d',
+              transform: `rotateX(-20deg) rotateY(${rotation}deg)`,
+              transition: 'transform 0.05s',
             }}>
-              {spec.l}×{spec.w}×{spec.h}cm
+              {/* ULD wireframe */}
+              <ULDFrame3D L={uldL} W={uldW} H={uldH} color="#1E40AF" fill="#3B82F6" />
+
+              {/* Cargo boxes — positioned inside ULD */}
+              <div style={{ position: 'absolute', transformStyle: 'preserve-3d', transform: `translateZ(${uldW}px)` }}>
+                {placedBoxes.map(({ cargo, ox, oy, oz }) => (
+                  <CargoBox3D
+                    key={cargo.id}
+                    cargo={cargo}
+                    pxPerCm={pxPerCm}
+                    offsetX={ox}
+                    offsetY={oy}
+                    offsetZ={oz}
+                    depthPx={uldW}
+                  />
+                ))}
+              </div>
+
+              {/* Floor shadow */}
+              <div style={{
+                position: 'absolute',
+                width: uldL, height: uldW,
+                background: 'rgba(0,0,0,0.06)',
+                transform: `translateY(${uldH}px) rotateX(-90deg)`,
+                borderRadius: 2,
+              }} />
             </div>
           </div>
 
-          {/* Right face (visible at 60-120° — depth plane) */}
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: containerL,
-            width: containerW,
-            height: containerH,
-            background: 'rgba(30, 78, 138, 0.25)',
-            border: '2px solid #1E4E8A',
-            transform: 'rotateY(90deg)',
-            borderRadius: '0 4px 4px 0',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-start',
-            alignItems: 'stretch',
-            padding: `${containerH * 0.10}px 2px 2px`,
-            gap: 1,
-          }}>
-            {uld.cargoItems.map((c, i) => (
-              <div key={c.id} style={{
-                height: Math.max(3, Math.min(maxStackH, 14)),
-                background: CC[c.category],
-                borderRadius: 1,
-                opacity: 0.85,
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                paddingLeft: 2,
-              }}>
-                {maxStackH > 8 && (
-                  <Typography.Text style={{ fontSize: 5, color: '#fff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {c.awb.split('-')[1]?.slice(-4)}
-                  </Typography.Text>
-                )}
+          {/* Legend */}
+          <div style={{ minWidth: 80 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: '#374151', marginBottom: 6 }}>ULD 规格</div>
+            <div style={{ fontSize: 8, color: '#64748B', marginBottom: 2 }}>长 {udims.L} cm</div>
+            <div style={{ fontSize: 8, color: '#64748B', marginBottom: 2 }}>宽 {udims.W} cm</div>
+            <div style={{ fontSize: 8, color: '#64748B', marginBottom: 6 }}>高 {udims.H} cm</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: '#374151', marginBottom: 4 }}>货物种类</div>
+            {Object.entries(C).map(([cat, cols]) => (
+              <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                <div style={{ width: 10, height: 8, background: cols.front, borderRadius: 2, border: '1px solid rgba(0,0,0,0.2)' }} />
+                <span style={{ fontSize: 8, color: '#374151' }}>
+                  {cat === 'normal' ? '普通' : cat === 'dgr' ? '危险品' : cat === 'live_animal' ? '活体' : '生鲜'}
+                </span>
               </div>
             ))}
-            {/* Right face label */}
-            <div style={{ position: 'absolute', bottom: 2, left: 3, fontSize: 6.5, color: 'rgba(30,78,138,0.5)', fontFamily: 'monospace' }}>
-              W:{spec.w}cm
+            <div style={{ fontSize: 8, color: '#94A3B8', marginTop: 8, lineHeight: 1.4 }}>
+              货物按实际<br/>长×宽×高比例<br/>渲染
             </div>
           </div>
-
-          {/* Top face (visible at slight tilt) */}
-          <div style={{
-            position: 'absolute',
-            bottom: containerW + containerH - 2,
-            left: 0,
-            width: containerL,
-            height: containerW,
-            background: 'rgba(30, 78, 138, 0.15)',
-            border: '2px solid #1E4E8A',
-            transform: 'rotateX(90deg)',
-            borderRadius: '4px 4px 0 0',
-          }} />
-
-          {/* Back face (visible at 180-270°) */}
-          <div style={{
-            position: 'absolute',
-            bottom: containerW,
-            left: 0,
-            width: containerL,
-            height: containerH,
-            background: 'rgba(15, 25, 35, 0.5)',
-            border: '2px solid rgba(30,78,138,0.4)',
-            transform: 'rotateY(180deg) translateZ(0px)',
-            borderRadius: 4,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backfaceVisibility: 'hidden',
-          }}>
-            <Typography.Text style={{ fontSize: 9, color: '#475569' }}>← 背面 →</Typography.Text>
-          </div>
-
-          {/* Left face (visible at 240-300°) */}
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: -containerW,
-            width: containerW,
-            height: containerH,
-            background: 'rgba(30, 78, 138, 0.18)',
-            border: '2px solid #1E4E8A',
-            transform: 'rotateY(-90deg)',
-            borderRadius: '4px 0 0 4px',
-          }} />
         </div>
-      </div>
 
-      {/* Rotation slider */}
-      {!compact && (
-        <div style={{ marginBottom: 4 }}>
-          <Slider
-            min={0} max={720} value={rotation}
-            onChange={(v) => setRotation(v as number)}
-            tooltip={{ formatter: (v) => `${v}°` }}
-            styles={{ track: { background: '#1E4E8A' }, handle: { borderColor: '#2563EB' } }}
-            size="small"
-          />
-        </div>
-      )}
-
-      {/* Stats row */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Tag color={fi.color} style={{ fontSize: 9, margin: 0 }}>{fi.label}</Tag>
-        <Typography.Text style={{ fontSize: 9, color: '#64748B' }}>{uld.cargoItems.length}件</Typography.Text>
-        <Typography.Text style={{ fontSize: 9, color: '#64748B' }}>{totW}kg</Typography.Text>
-        <Typography.Text style={{ fontSize: 9, color: '#64748B' }}>{totV.toFixed(2)}/{maxV}m³</Typography.Text>
-        <Typography.Text style={{ fontSize: 9, color: remV > maxV * 0.3 ? '#F59E0B' : '#16A34A', fontWeight: 600 }}>
-          余{remV.toFixed(2)}m³
-        </Typography.Text>
-        <Typography.Text style={{ fontSize: 8, color: '#94A3B8', marginLeft: 'auto' }}>
-          {spec.l}×{spec.w}×{spec.h}cm
-        </Typography.Text>
-      </div>
-
-      {/* Cargo item list */}
-      {uld.cargoItems.length > 0 && (
-        <div style={{ marginTop: 4, borderTop: '1px solid #F1F5F9', paddingTop: 4, maxHeight: 64, overflowY: 'auto' }}>
+        {/* Stats row */}
+        <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
           {uld.cargoItems.map(c => (
-            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0', borderBottom: '1px solid #F8FAFC' }}>
-              <Typography.Text style={{ fontSize: 9.5, color: CC[c.category], flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {c.awb} {c.description}
-              </Typography.Text>
-              {onCargoRemove && (
-                <Button size="small" type="text" icon={<DeleteOutlined />}
-                  onClick={() => onCargoRemove(uld.id, c.id)}
-                  style={{ fontSize: 8, color: '#CBD5E1', padding: 0, width: 12, height: 12, flexShrink: 0 }} />
-              )}
+            <div key={c.id} style={{
+              background: C[c.category]?.front || '#3B82F6',
+              borderRadius: 3,
+              padding: '2px 5px',
+              display: 'flex', flexDirection: 'column',
+            }}>
+              <span style={{ fontSize: 7, color: '#fff', fontWeight: 600 }}>{c.description.slice(0, 10)}</span>
+              <span style={{ fontSize: 6, color: 'rgba(255,255,255,0.8)' }}>{c.length_cm}×{c.width_cm}×{c.height_cm}</span>
             </div>
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
