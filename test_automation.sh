@@ -101,12 +101,12 @@ else
 fi
 
 # ─── Test 6: 登录页显示版本号 ─────────────────────────────────────────
-info "Test 6: 登录页版本号 (V5.1)"
+info "Test 6: 登录页版本号 (V5.2)"
 LOGIN_HTML=$(curl -s --max-time 10 "$HOST/")
-if echo "$LOGIN_HTML" | grep -q "V5.1"; then
-  pass "登录页包含版本号 V5.1"
+if echo "$LOGIN_HTML" | grep -q "V5.2"; then
+  pass "登录页包含版本号 V5.2"
 else
-  fail "登录页未包含版本号 V5.1"
+  fail "登录页未包含版本号 V5.2"
 fi
 
 if echo "$LOGIN_HTML" | grep -q "CBA Air Cargo"; then
@@ -169,7 +169,7 @@ info "Test 10: 关键组件代码存在性"
 LOCAL_FILES=(
   "/workspace/cba-air-cargo-agent/frontend/src/pages/LoadPlanningPage.tsx:dgr_rules"
   "/workspace/cba-air-cargo-agent/frontend/src/pages/LoadPlanningPage.tsx:HoldPosition"
-  "/workspace/cba-air-cargo-agent/frontend/src/pages/LoginPage.tsx:V5.1"
+  "/workspace/cba-air-cargo-agent/frontend/src/pages/LoginPage.tsx:V5.2"
   "/workspace/cba-air-cargo-agent/frontend/src/data/dgr_rules.ts:DGR_SEGREGATION"
   "/workspace/cba-air-cargo-agent/frontend/src/data/hold_positions.ts:HOLD_POSITIONS"
   "/workspace/cba-air-cargo-agent/frontend/src/data/uld_specs.ts:ULD_TYPES"

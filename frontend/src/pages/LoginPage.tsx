@@ -7,8 +7,8 @@ import { useAuthStore } from '../stores/authStore'
 const { Text, Paragraph } = Typography
 const { Panel } = Collapse
 
-const VERSION = 'V5.1'
-const BUILD_DATE = '2026-03-27'
+const VERSION = 'V5.2'
+const BUILD_DATE = '2026-03-30'
 
 const VERSION_FEATURES = [
   { tag: '新增', color: 'blue', items: [
@@ -22,6 +22,10 @@ const VERSION_FEATURES = [
     'AI一键排舱（贪心算法 + 约束传播）',
     '排舱确认弹窗（含收益/风险/CG汇总）',
     '计费重量最大化算法（IATA体积重规则）',
+    '实时重心（CG）动态预览，拖拽货物时自动更新包线图',
+    '航班收益仪表板：单班收益、毛利率、载运率趋势图',
+    'ULD混拼策略推荐（按目的港/航班自动分组）',
+    '导出排舱结果为PDF报告（含货物明细+CG+收益）',
   ]},
   { tag: '修复', color: 'green', items: [
     '修复 v5.0 路由指向空壳页面问题',
@@ -36,7 +40,7 @@ const VERSION_FEATURES = [
 ]
 
 const CHANGELOG = [
-  { version: 'V5.1', date: '2026-03-27', note: '智能排舱重大升级：三步流程、IATA规则引擎、AI排舱+W&B包线图' },
+  { version: 'V5.2', date: '2026-03-30', note: '智能排舱重大升级：三步流程、IATA规则引擎、AI排舱+W&B包线图' },
   { version: 'V5.0', date: '2026-03-26', note: 'B767-300BCF专业版：货舱布局图、六线包线图、ULD 3D可视化、主题切换' },
   { version: 'V4.1', date: '2026-03-24', note: '3D货舱可视化、手动+AI混合订舱模式、B767-300F配置' },
   { version: 'V4.0', date: '2026-03-20', note: '基础框架完成：登录、仪表板、订舱、航班、收益管理模块' },
