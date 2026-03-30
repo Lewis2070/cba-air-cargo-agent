@@ -186,12 +186,11 @@ function ULDBuildPanel({ ulds, onRemove, onCargoRemove, onDrop, onOpenModal }: {
           {ulds.map(u => (
             <div key={u.id} draggable onDragOver={h} onDrop={(e) => onDrop(e, u.id)}
               onDragStart={(e) => { e.dataTransfer.setData('uldId', u.id); e.dataTransfer.setData('type', 'uld'); }}
-              onClick={() => onOpenModal(u)}
               style={{
                 border: '2px solid ' + (u.position ? '#16A34A' : '#E2E8F0'),
                 borderRadius: 8, padding: 8,
                 background: u.position ? '#F0FDF4' : '#fff',
-                cursor: 'pointer', transition: 'all 0.15s',
+                cursor: 'grab', transition: 'all 0.15s',
               }}>
               <ULD3DView uld={u} onRemove={onRemove} onCargoRemove={onCargoRemove} onOpenModal={onOpenModal} />
             </div>
