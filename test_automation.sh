@@ -168,7 +168,7 @@ fi
 info "Test 10: 关键组件代码存在性"
 LOCAL_FILES=(
   "/workspace/cba-air-cargo-agent/frontend/src/pages/LoadPlanningPage.tsx:dgr_rules"
-  "/workspace/cba-air-cargo-agent/frontend/src/pages/LoadPlanningPage.tsx:HoldPosition"
+  "/workspace/cba-air-cargo-agent/frontend/src/pages/LoadPlanningPage.tsx:uld_serial"
   "/workspace/cba-air-cargo-agent/frontend/src/pages/LoginPage.tsx:V5.2"
   "/workspace/cba-air-cargo-agent/frontend/src/data/dgr_rules.ts:DGR_SEGREGATION"
   "/workspace/cba-air-cargo-agent/frontend/src/data/hold_positions.ts:HOLD_POSITIONS"
