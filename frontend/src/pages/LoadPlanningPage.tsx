@@ -123,7 +123,7 @@ function WnBChart({ cg, tw }: { cg: number; tw: number }) {
 }
 
 // Cargo List Panel
-function CargoListPanel({ list, ulds, onDrag }: { list: CI[]; ulds: UI[]; onDrag: (e: React.DragEvent, id: string) => void }) {
+function CargoListPanel({ list, ulds, onDrag, onCargoRemove }: { list: CI[]; ulds: UI[]; onDrag: (e: React.DragEvent, id: string) => void; onCargoRemove?: (uid: string, cid: string) => void }) {
   const cols = [
     { title: 'AWB票号', dataIndex: 'awb', width: 130, render: (t: string) => <Text style={{ fontSize: 11, fontFamily: 'monospace', color: '#1F4E79', fontWeight: 600 }}>{t}</Text>, sorter: (a: CI, b: CI) => a.awb.localeCompare(b.awb) },
     { title: '物品名称', dataIndex: 'description', width: 90, render: (t: string) => <Text style={{ fontSize: 11 }}>{t}</Text> },
