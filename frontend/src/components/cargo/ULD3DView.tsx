@@ -1,24 +1,19 @@
 /**
- * CBA v5.2 — True 3D ULD Packing Visualizer
- * - ULD rendered as a transparent wireframe 3D container
- * - Each cargo item rendered as a proportional 3D box (front + right + top faces)
- * - Boxes sized proportionally to real L×W×H dimensions
- * - Boxes placed inside ULD in realistic packing positions
+ * CBA v5.2.1 — True 3D ULD Packing Visualizer
+ * Isometric SVG projection with proper gravity stacking
  */
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Slider, Tag, Typography, Space, Button, Tooltip } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
-import { findULDType } from '../../data/uld_specs';
 import type { UI, CI } from './CargoTypes';
 
 const { Text } = Typography;
 
-// Category colors with light/dark face variants
-const C = {
-  normal:     { front: '#3B82F6', right: '#1D4ED8', top: '#60A5FA' },
-  dgr:        { front: '#EF4444', right: '#B91C1C', top: '#F87171' },
-  live_animal:{ front: '#16A34A', right: '#15803D', top: '#4ADE80' },
-  perishable: { front: '#F59E0B', right: '#B45309', top: '#FCD34D' },
+const CAT: Record<string, { f: string; r: string; t: string; label: string }> = {
+  normal:      { f: '#3B82F6', r: '#1D4ED8', t: '#93C5FD', label: '普通' },
+  dgr:         { f: '#EF4444', r: '#B91C1C', t: '#FCA5A5', label: '危险品' },
+  live_animal: { f: '#16A34A', r: '#15803D', t: '#86EFAC', label: '活体' },
+  perishable:  { f: '#F59E0B', r: '#B45309', t: '#FDE68A', label: '生鲜' },
 };
 
 interface Props {
@@ -29,360 +24,265 @@ interface Props {
   compact?: boolean;
 }
 
-// ULD real-world dimensions (cm) — IATA standard
 const ULD_DIMS: Record<string, { L: number; W: number; H: number }> = {
   'LD-7': { L: 223, W: 153, H: 163 },
-  'LD-6': { L: 153, W: 153, H: 163 }, // Q6/AKE
-  'LD-3': { L: 153, W: 153, H: 114 }, // AKE — lower height
+  'LD-6': { L: 153, W: 153, H: 163 },
+  'LD-3': { L: 153, W: 153, H: 114 },
   'LD-2': { L: 146, W: 118, H: 163 },
   'LD-8': { L: 223, W: 136, H: 163 },
   'LD-11':{ L: 153, W: 118, H: 163 },
 };
 
-function getULDims(code: string) {
-  return ULD_DIMS[code] || ULD_DIMS['LD-6'];
+// ── Packing algorithm: simple gravity row-layer packing ─────────────────────
+interface PBox { cargo: CI; ox: number; oy: number; oz: number; }
+
+function pack(cargoItems: CI[], L: number, W: number, H: number, sc: number): PBox[] {
+  const sorted = [...cargoItems]
+    .map(c => ({ c, vol: c.length_cm * c.width_cm * c.height_cm }))
+    .sort((a, b) => b.vol - a.vol)
+    .map(({ c }) => c);
+
+  const placed: PBox[] = [];
+  const layers: { z: number; h: number; rows: { y: number; h: number; x: number; w: number; c: CI }[][] }[] = [];
+  const LAYER_H = 30; // cm per layer
+
+  for (const c of sorted) {
+    let best: { layer: number; row: number; x: number; oz: number } | null = null;
+    let bestZ = Infinity;
+
+    for (let li = 0; li < layers.length; li++) {
+      const layer = layers[li];
+      if (layer.z + layer.h + c.height_cm > H) continue;
+      for (let ri = 0; ri < layer.rows.length; ri++) {
+        const row = layer.rows[ri];
+        if (row.h < c.height_cm) continue;
+        const rem = row.x + c.length_cm;
+        if (rem <= L) {
+          const oz = layer.z;
+          if (oz < bestZ) { bestZ = oz; best = { layer: li, row: ri, x: row.x, oz }; }
+        }
+      }
+      // Try starting a new row in this layer
+      if (layer.rows.length > 0) {
+        const lastRow = layer.rows[layer.rows.length - 1];
+        const remX = L - lastRow.x;
+        if (remX >= c.length_cm && lastRow.h >= c.height_cm) {
+          const oz = layer.z;
+          if (oz < bestZ) { bestZ = oz; best = { layer: li, row: layer.rows.length, x: lastRow.x, oz }; }
+        }
+      } else {
+        const oz = layer.z;
+        if (oz < bestZ) { bestZ = oz; best = { layer: li, row: 0, x: 0, oz }; }
+      }
+    }
+
+    if (best) {
+      // Extend or start row in existing layer
+      const layer = layers[best.layer];
+      if (best.row < layer.rows.length) {
+        const row = layer.rows[best.row];
+        placed.push({ cargo: c, ox: row.x, oy: 0, oz: best.oz });
+        row.x += c.length_cm;
+        row.h = Math.min(row.h, c.height_cm);
+      } else {
+        placed.push({ cargo: c, ox: 0, oy: 0, oz: best.oz });
+        layer.rows.push({ y: 0, h: c.height_cm, x: c.length_cm, w: 0, c });
+      }
+    } else {
+      // Start new layer
+      const z = layers.length === 0 ? 0 : layers[layers.length - 1].z + layers[layers.length - 1].h;
+      if (z + c.height_cm <= H) {
+        layers.push({ z, h: c.height_cm, rows: [{ y: 0, h: c.height_cm, x: c.length_cm, w: 0, c }] });
+        placed.push({ cargo: c, ox: 0, oy: 0, oz: z });
+      }
+    }
+  }
+  return placed;
 }
 
-// --- 3D Box faces ---
-function BoxFace({ face, style }: { face: string; style: React.CSSProperties }) {
-  return <div style={{ position: 'absolute', ...style, backfaceVisibility: 'hidden' }}>{face}</div>;
-}
+// ── Isometric SVG helpers ────────────────────────────────────────────────────
+const S = 1.1; // global scale
+const iso = {
+  sx(x: number, z: number) { return (x - z) * S + 16; },
+  sy(x: number, y: number, z: number) { return ((x + y) * 0.5 - z) * S + 90; },
+};
 
-// Single cargo item as a 3D box
-function CargoBox3D({
-  cargo,
-  pxPerCm,
-  offsetX, offsetY, offsetZ,
-  depthPx,
-}: {
-  cargo: CI;
-  pxPerCm: number;
-  offsetX: number; offsetY: number; offsetZ: number;
-  depthPx: number;
-}) {
-  const colors = C[cargo.category] || C.normal;
-  const L = cargo.length_cm * pxPerCm;
-  const W = cargo.width_cm * pxPerCm;
-  const H = cargo.height_cm * pxPerCm;
-  const z = depthPx;
+function poly(pts: number[][]) { return pts.map(p => p.join(',')).join(' '); }
 
-  const common: React.CSSProperties = {
-    position: 'absolute',
-    transformStyle: 'preserve-3d',
-    backfaceVisibility: 'hidden',
-  };
+function Box({ b, sc }: { b: PBox; sc: number }) {
+  const c = b.cargo;
+  const L = c.length_cm * sc, W = c.width_cm * sc, H = c.height_cm * sc;
+  const col = CAT[c.category] || CAT.normal;
+  const p = (x: number, y: number, z: number) => [iso.sx(b.ox + x, b.oz + z), iso.sy(b.ox + x, b.oy + y, b.oz + z)];
 
   return (
-    <div style={{ ...common, transform: `translate3d(${offsetX}px, ${offsetY}px, ${offsetZ}px)` }}>
-      {/* FRONT face */}
-      <div style={{
-        ...common,
-        width: L, height: H,
-        background: colors.front,
-        border: '1px solid rgba(255,255,255,0.4)',
-        boxShadow: 'inset 0 0 8px rgba(0,0,0,0.2)',
-        transform: 'translateZ(0px)',
-        borderRadius: '2px',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        overflow: 'hidden',
-      }}>
-        <span style={{ fontSize: 6, color: '#fff', fontWeight: 700, textAlign: 'center', lineHeight: 1.2, padding: 2, pointerEvents: 'none' }}>
-          {cargo.description.length > 8 ? cargo.description.slice(0, 8) + '…' : cargo.description}
-          <br/><span style={{ fontSize: 5, opacity: 0.85 }}>{cargo.length_cm}×{cargo.width_cm}×{cargo.height_cm}</span>
-        </span>
-      </div>
+    <g>
       {/* RIGHT face */}
-      <div style={{
-        ...common,
-        width: z, height: H,
-        background: colors.right,
-        border: '1px solid rgba(0,0,0,0.2)',
-        transform: `translateX(${L}px) rotateY(90deg)`,
-        borderRadius: '2px',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <span style={{ fontSize: 6, color: 'rgba(255,255,255,0.8)', transform: 'rotate(90deg)', whiteSpace: 'nowrap' }}>
-          {cargo.weight_kg}kg
-        </span>
-      </div>
+      <polygon points={poly([p(0,W,H), p(L,W,H), p(L,0,H), p(0,0,H)])} fill={col.r} stroke="#fff" strokeWidth="0.4" strokeOpacity="0.3" />
       {/* TOP face */}
-      <div style={{
-        ...common,
-        width: L, height: z,
-        background: colors.top,
-        border: '1px solid rgba(255,255,255,0.4)',
-        transform: `translateY(-${z}px) rotateX(-90deg)`,
-        borderRadius: '2px',
-      }} />
-    </div>
+      <polygon points={poly([p(0,W,0), p(L,W,0), p(L,W,H), p(0,W,H)])} fill={col.t} stroke="#fff" strokeWidth="0.4" strokeOpacity="0.5" />
+      {/* FRONT face */}
+      <polygon points={poly([p(0,0,0), p(L,0,0), p(L,0,H), p(0,0,H)])} fill={col.f} stroke="#fff" strokeWidth="0.4" strokeOpacity="0.4" />
+      {/* Label on front face */}
+      <text
+        x={(p(0,0,H)[0] + p(L,0,H)[0]) / 2}
+        y={p(0,0,H)[1] + 10}
+        textAnchor="middle" fontSize="5.5" fill="white" fontWeight="700"
+        style={{ pointerEvents: 'none', userSelect: 'none' }}
+      >
+        {c.description.slice(0, 7)}
+      </text>
+      <text
+        x={(p(0,0,H)[0] + p(L,0,H)[0]) / 2}
+        y={p(0,0,H)[1] + 16}
+        textAnchor="middle" fontSize="4.5" fill="rgba(255,255,255,0.85)"
+        style={{ pointerEvents: 'none', userSelect: 'none' }}
+      >
+        {c.length_cm}×{c.width_cm}×{c.height_cm}
+      </text>
+    </g>
   );
 }
 
-// Main ULD 3D container
-function ULDFrame3D({ L, W, H, color, fill }: { L: number; W: number; H: number; color: string; fill: string }) {
-  const frame: React.CSSProperties = {
-    position: 'absolute',
-    transformStyle: 'preserve-3d',
-    backfaceVisibility: 'hidden',
-    pointerEvents: 'none',
-  };
+function ULDFrame({ L, W, H, sc }: { L: number; W: number; H: number; sc: number }) {
+  const p = (x: number, y: number, z: number) => [iso.sx(x, z), iso.sy(x, y, z)];
+  const A = p(0,0,0), B = p(L,0,0), C = p(L,W,0), D = p(0,W,0);
+  const E = p(0,0,H), F = p(L,0,H), G = p(L,W,H), Hh = p(0,W,H);
+
   return (
-    <>
-      {/* FRONT */}
-      <div style={{ ...frame, width: L, height: H, border: `2px solid ${color}`, background: fill ? `${fill}22` : 'transparent', transform: 'translateZ(0px)' }} />
-      {/* BACK */}
-      <div style={{ ...frame, width: L, height: H, border: `2px solid ${color}`, background: 'transparent', transform: `translateZ(${W}px)` }} />
-      {/* RIGHT */}
-      <div style={{ ...frame, width: W, height: H, border: `2px solid ${color}`, background: 'transparent', transform: `translateX(${L}px) rotateY(90deg)` }} />
-      {/* LEFT */}
-      <div style={{ ...frame, width: W, height: H, border: `2px solid ${color}`, background: 'transparent', transform: 'rotateY(-90deg)' }} />
-      {/* TOP */}
-      <div style={{ ...frame, width: L, height: W, border: `2px solid ${color}`, background: 'transparent', transform: `translateY(-${W}px) rotateX(-90deg)` }} />
-    </>
+    <g opacity="0.65">
+      {/* Bottom */}
+      <polygon points={poly([A, B, C, D])} fill="#EFF6FF" stroke="#1E40AF" strokeWidth="1" />
+      {/* Back walls */}
+      <polygon points={poly([D, C, G, Hh])} fill="#DBEAFE" stroke="#1E40AF" strokeWidth="0.8" strokeDasharray="4,2" />
+      <polygon points={poly([C, B, F, G])} fill="#DBEAFE" stroke="#1E40AF" strokeWidth="0.8" strokeDasharray="4,2" />
+      {/* Front opening edges */}
+      <polygon points={poly([A, B, F, E])} fill="none" stroke="#1E40AF" strokeWidth="1.2" />
+      {/* Wire edges */}
+      {[[A,B],[B,C],[C,D],[D,A],[A,E],[B,F],[C,G],[D,Hh],[E,F],[F,G],[G,Hh],[Hh,E]].map(([a, b], i) => (
+        <line key={i} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
+          stroke="#1E40AF" strokeWidth={i < 4 || i >= 8 ? 1.5 : 0.9}
+          opacity={i < 4 ? 1 : 0.7} />
+      ))}
+      {/* Labels */}
+      <text x={(A[0]+B[0])/2} y={A[1]+14} textAnchor="middle" fontSize="7" fill="#64748B">← {L}cm →</text>
+      <text x={C[0]+8} y={(C[1]+D[1])/2+4} textAnchor="start" fontSize="7" fill="#64748B">↓ {W}cm</text>
+      <text x={E[0]-3} y={E[1]-3} textAnchor="end" fontSize="7" fill="#1E40AF" fontWeight="700">↑ {H}cm</text>
+    </g>
   );
 }
 
 export default function ULD3DView({ uld, onRemove, onCargoRemove, onOpenModal, compact = false }: Props) {
-  const [rotation, setRotation] = useState(0);
-  const udims = getULDims(uld.uld_code);
+  const [angle, setAngle] = useState(35); // isometric angle in degrees
+  const [layer, setLayer] = useState(0);
+  const dims = ULD_DIMS[uld.uld_code] || ULD_DIMS['LD-6'];
+  const sc = compact ? 0.5 : 1.05;
+  const svgW = Math.ceil(iso.sx(dims.L, dims.W)) + 80;
+  const svgH = Math.ceil(iso.sy(0, dims.W, dims.H)) + 130;
 
-  // Container pixel scale — fit in available space
-  const maxULDL = compact ? 120 : 200;
-  const pxPerCm = maxULDL / Math.max(udims.L, udims.W, udims.H);
+  const boxes = useMemo(() => pack(uld.cargoItems, dims.L, dims.W, dims.H, sc), [uld.cargoItems, dims.L, dims.W, dims.H, sc]);
 
-  const uldL = udims.L * pxPerCm;
-  const uldW = udims.W * pxPerCm; // depth (Z)
-  const uldH = udims.H * pxPerCm;
-
-  // Pack cargo items into the ULD — row-by-row, layer-by-layer
-  const placedBoxes = useMemo(() => {
-    const sorted = [...uld.cargoItems].sort((a, b) => {
-      // Larger items first
-      const volA = a.length_cm * a.width_cm * a.height_cm;
-      const volB = b.length_cm * b.width_cm * b.height_cm;
-      return volB - volA;
-    });
-
-    const boxes: Array<{ cargo: CI; ox: number; oy: number; oz: number }> = [];
-    // Simple gravity-packing simulation:
-    // We fill from bottom, row by row, layer by layer
-    // Row = along L, Column = along W, Layer = along H
-    let currentZ = 0; // current fill depth along W axis
-    let currentX = 0; // current position along L axis
-    let currentY = 0; // current layer height along H axis
-    let rowMaxH = 0;
-    let rowMaxZ = 0;
-
-    for (const c of sorted) {
-      const cL = c.length_cm * pxPerCm;
-      const cW = c.width_cm * pxPerCm;
-      const cH = c.height_cm * pxPerCm;
-
-      // Try to fit in current row
-      if (currentX + cL <= uldL && Math.max(currentZ, rowMaxZ) + cW <= uldW && currentY + cH <= uldH) {
-        const oz = currentZ;
-        const ox = currentX;
-        const oy = uldH - currentY - cH; // Y measured from bottom
-        boxes.push({ cargo: c, ox, oy, oz });
-        currentX += cL;
-        rowMaxH = Math.max(rowMaxH, cH);
-        rowMaxZ = Math.max(rowMaxZ, currentZ + cW);
-      } else if (currentY + rowMaxH + cH <= uldH) {
-        // Start new row (same layer)
-        currentX = 0;
-        currentZ = 0;
-        currentY += rowMaxH;
-        const oz = 0;
-        const ox = 0;
-        const oy = uldH - currentY - cH;
-        boxes.push({ cargo: c, ox, oy, oz });
-        currentX = cL;
-        rowMaxH = cH;
-        rowMaxZ = cW;
-      } else {
-        // No more space — skip (or stack on top)
-        break;
-      }
-    }
-    return boxes;
-  }, [uld.cargoItems, uldL, uldW, uldH, pxPerCm]);
-
-  const fillPct = uld.cargoItems.reduce((s, c) => s + c.volume_m3, 0) / (udims.L * udims.W * udims.H / 1e6);
-  const fillColor = fillPct > 0.85 ? '#EF4444' : fillPct > 0.6 ? '#F59E0B' : '#16A34A';
+  const fillPct = uld.cargoItems.reduce((s, c) => s + c.volume_m3, 0) / (dims.L * dims.W * dims.H / 1e6);
+  const fColor = fillPct > 0.85 ? '#EF4444' : fillPct > 0.6 ? '#F59E0B' : '#16A34A';
 
   if (compact) {
-    // Compact: show mini 3D + key info
     return (
       <div style={{ userSelect: 'none' }}>
-        <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#1F4E79' }}>{uld.uld_serial || uld.uld_code}</span>
-          <span style={{ fontSize: 9, color: '#64748B' }}>{uld.cargoItems.length}件</span>
-          <Tag color={fillColor} style={{ fontSize: 8, margin: 0 }}>{Math.round(fillPct * 100)}%</Tag>
-          {uld.position && <Tag style={{ fontSize: 8, margin: 0 }}>{uld.position}</Tag>}
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap', marginBottom: 3 }}>
+          <Text style={{ fontSize: 10, fontWeight: 700, color: '#1F4E79' }}>{uld.uld_serial || uld.uld_code}</Text>
+          <Tag color={fColor} style={{ fontSize: 8, margin: 0 }}>{Math.round(fillPct * 100)}%</Tag>
+          <Text style={{ fontSize: 9, color: '#64748B' }}>{uld.cargoItems.length}件</Text>
         </div>
-        <div style={{ perspective: 400, perspectiveOrigin: 'center' }}>
-          <div style={{
-            width: uldL, height: uldH,
-            position: 'relative',
-            transform: `rotateX(-8deg) rotateY(${-20}deg)`,
-            transformStyle: 'preserve-3d',
-          }}>
-            <div style={{
-              position: 'absolute', width: uldL, height: uldH,
-              border: '1.5px solid #94A3B8',
-              background: '#F8FAFC',
-              borderRadius: 3,
-              transform: 'translateZ(2px)',
-              overflow: 'hidden',
-              display: 'flex', flexWrap: 'wrap', gap: 1, padding: 2,
-              alignContent: 'flex-start',
-            }}>
-              {uld.cargoItems.slice(0, 12).map((c, i) => (
-                <div key={c.id} style={{
-                  width: 12, height: 10,
-                  background: C[c.category]?.front || '#3B82F6',
-                  borderRadius: 2,
-                  flexShrink: 0,
-                }} title={`${c.description} ${c.weight_kg}kg`} />
-              ))}
-            </div>
-            <div style={{
-              position: 'absolute', width: uldL, height: 3,
-              background: '#CBD5E1',
-              transform: `translateY(${uldH}px) rotateX(-90deg)`,
-              transformOrigin: 'top',
-            }} />
-          </div>
-        </div>
+        <svg width="100%" viewBox={`0 0 ${svgW} ${svgH}`}>
+          <ULDFrame L={dims.L} W={dims.W} H={dims.H} sc={sc} />
+          {boxes.map(b => <Box key={b.cargo.id} b={b} sc={sc} />)}
+        </svg>
       </div>
     );
   }
 
-  // Full 3D modal view
   return (
-    <div style={{ userSelect: 'none', padding: 4 }}>
+    <div style={{ userSelect: 'none', padding: '4px 4px 8px' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <Space size={4}>
+        <Space size={4} wrap>
           <Text style={{ fontSize: 12, fontWeight: 700, color: '#1F4E79' }}>{uld.uld_serial || uld.uld_code}</Text>
-          <Text style={{ fontSize: 10, color: '#64748B' }}>{udims.L}×{udims.W}×{udims.H}cm</Text>
-          <Text style={{ fontSize: 10, color: '#64748B' }}>{uld.cargoItems.length}件</Text>
-          <Tag color={fillColor} style={{ fontSize: 9, margin: 0 }}>{Math.round(fillPct * 100)}% 装载</Tag>
+          <Text style={{ fontSize: 10, color: '#64748B' }}>{dims.L}×{dims.W}×{dims.H}cm</Text>
+          <Tag color={fColor} style={{ fontSize: 9, margin: 0 }}>{Math.round(fillPct * 100)}% 装载</Tag>
+          <Text style={{ fontSize: 10, color: '#64748B' }}>{uld.cargoItems.length} 件</Text>
+          {uld.position && <Tag color="blue" style={{ fontSize: 9 }}>{uld.position}</Tag>}
         </Space>
         <Space size={2}>
-          {onCargoRemove && (
-            <Tooltip title="移除此ULD">
-              <Button size="small" icon={<DeleteOutlined />} danger onClick={() => onRemove(uld.id)} />
-            </Tooltip>
-          )}
-          {onOpenModal && (
-            <Button size="small" onClick={() => onOpenModal(uld)} style={{ fontSize: 9 }}>全屏</Button>
-          )}
+          {onCargoRemove && <Tooltip title="移除 ULD"><Button size="small" icon={<DeleteOutlined />} danger onClick={() => onRemove(uld.id)} /></Tooltip>}
+          {onOpenModal && <Button size="small" onClick={() => onOpenModal(uld)}>全屏</Button>}
         </Space>
       </div>
 
-      {/* Rotation slider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <Text style={{ fontSize: 9, color: '#64748B', width: 36 }}>旋转 {rotation}°</Text>
-        <Slider
-          min={0} max={720} value={rotation}
-          onChange={setRotation}
+      {/* Controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <Text style={{ fontSize: 9, color: '#64748B', width: 48 }}>视角 {angle}°</Text>
+        <Slider min={0} max={80} value={angle} onChange={setAngle} style={{ flex: 1 }}
           tooltip={{ formatter: (v) => `${v}°` }}
-          style={{ flex: 1 }}
-          styles={{ track: { background: '#3B82F6' } }}
-        />
-        <Button size="small" onClick={() => setRotation(0)} style={{ fontSize: 9 }}>重置</Button>
+          styles={{ track: { background: '#3B82F6' } }} />
+        <Button size="small" onClick={() => setAngle(35)} style={{ fontSize: 9 }}>重置</Button>
       </div>
 
-      {/* 3D Viewport */}
+      {/* 3D SVG Viewport */}
       <div style={{
-        perspective: 800,
-        perspectiveOrigin: '50% 40%',
-        background: 'linear-gradient(180deg, #F1F5F9 0%, #E2E8F0 100%)',
-        borderRadius: 8,
-        padding: '12px 8px 8px',
-        overflow: 'hidden',
+        background: 'linear-gradient(160deg, #F8FAFC 0%, #EFF6FF 100%)',
+        borderRadius: 8, border: '1px solid #E2E8F0', padding: '8px 4px 4px',
       }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: 24,
-        }}>
-          {/* 3D scene */}
-          <div style={{ perspective: 800, perspectiveOrigin: '50% 50%' }}>
-            <div style={{
-              position: 'relative',
-              width: uldL + 60, height: uldH + 40,
-              transformStyle: 'preserve-3d',
-              transform: `rotateX(-20deg) rotateY(${rotation}deg)`,
-              transition: 'transform 0.05s',
-            }}>
-              {/* ULD wireframe */}
-              <ULDFrame3D L={uldL} W={uldW} H={uldH} color="#1E40AF" fill="#3B82F6" />
+        <svg width="100%" viewBox={`-5 -5 ${svgW + 10} ${svgH + 10}`} style={{ display: 'block', maxHeight: 340 }}>
+          {/* Grid lines on floor */}
+          {Array.from({ length: Math.ceil(dims.L / 40) + 1 }, (_, i) => {
+            const x = i * 40 * sc;
+            return <line key={`v${i}`} x1={iso.sx(x,0)+16} y1={iso.sy(x,0,0)+90} x2={iso.sx(x,dims.W)+16} y2={iso.sy(x,dims.W,0)+90} stroke="#CBD5E1" strokeWidth="0.5" strokeDasharray="3,4" />;
+          })}
+          {Array.from({ length: Math.ceil(dims.W / 40) + 1 }, (_, i) => {
+            const y = i * 40 * sc;
+            return <line key={`h${i}`} x1={iso.sx(0,y)+16} y1={iso.sy(0,y,0)+90} x2={iso.sx(dims.L,y)+16} y2={iso.sy(dims.L,y,0)+90} stroke="#CBD5E1" strokeWidth="0.5" strokeDasharray="3,4" />;
+          })}
 
-              {/* Cargo boxes — positioned inside ULD */}
-              <div style={{ position: 'absolute', transformStyle: 'preserve-3d', transform: `translateZ(${uldW}px)` }}>
-                {placedBoxes.map(({ cargo, ox, oy, oz }) => (
-                  <CargoBox3D
-                    key={cargo.id}
-                    cargo={cargo}
-                    pxPerCm={pxPerCm}
-                    offsetX={ox}
-                    offsetY={oy}
-                    offsetZ={oz}
-                    depthPx={uldW}
-                  />
-                ))}
-              </div>
+          {/* ULD wireframe */}
+          <ULDFrame L={dims.L} W={dims.W} H={dims.H} sc={sc} />
 
-              {/* Floor shadow */}
-              <div style={{
-                position: 'absolute',
-                width: uldL, height: uldW,
-                background: 'rgba(0,0,0,0.06)',
-                transform: `translateY(${uldH}px) rotateX(-90deg)`,
-                borderRadius: 2,
-              }} />
+          {/* Cargo boxes — back-to-front sort for correct overlap */}
+          {[...boxes]
+            .sort((a, b) => (a.oy + a.oz) - (b.oy + b.oz))
+            .map(b => <Box key={b.cargo.id} b={b} sc={sc} />)
+          }
+        </svg>
+
+        {/* Legend */}
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 6, paddingLeft: 4 }}>
+          {Object.entries(CAT).map(([k, v]) => (
+            <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <div style={{ width: 10, height: 8, background: v.f, borderRadius: 2, border: '1px solid rgba(0,0,0,0.15)' }} />
+              <span style={{ fontSize: 8, color: '#374151' }}>{v.label}</span>
             </div>
-          </div>
-
-          {/* Legend */}
-          <div style={{ minWidth: 80 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: '#374151', marginBottom: 6 }}>ULD 规格</div>
-            <div style={{ fontSize: 8, color: '#64748B', marginBottom: 2 }}>长 {udims.L} cm</div>
-            <div style={{ fontSize: 8, color: '#64748B', marginBottom: 2 }}>宽 {udims.W} cm</div>
-            <div style={{ fontSize: 8, color: '#64748B', marginBottom: 6 }}>高 {udims.H} cm</div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: '#374151', marginBottom: 4 }}>货物种类</div>
-            {Object.entries(C).map(([cat, cols]) => (
-              <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                <div style={{ width: 10, height: 8, background: cols.front, borderRadius: 2, border: '1px solid rgba(0,0,0,0.2)' }} />
-                <span style={{ fontSize: 8, color: '#374151' }}>
-                  {cat === 'normal' ? '普通' : cat === 'dgr' ? '危险品' : cat === 'live_animal' ? '活体' : '生鲜'}
-                </span>
-              </div>
-            ))}
-            <div style={{ fontSize: 8, color: '#94A3B8', marginTop: 8, lineHeight: 1.4 }}>
-              货物按实际<br/>长×宽×高比例<br/>渲染
-            </div>
+          ))}
+          <div style={{ marginLeft: 'auto', fontSize: 8, color: '#94A3B8' }}>
+            ← {dims.L}cm长 · ↓ {dims.W}cm宽 · ↑ {dims.H}cm高
           </div>
         </div>
+      </div>
 
-        {/* Stats row */}
-        <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+      {/* Cargo chips */}
+      {uld.cargoItems.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
           {uld.cargoItems.map(c => (
-            <div key={c.id} style={{
-              background: C[c.category]?.front || '#3B82F6',
-              borderRadius: 3,
-              padding: '2px 5px',
-              display: 'flex', flexDirection: 'column',
-            }}>
-              <span style={{ fontSize: 7, color: '#fff', fontWeight: 600 }}>{c.description.slice(0, 10)}</span>
-              <span style={{ fontSize: 6, color: 'rgba(255,255,255,0.8)' }}>{c.length_cm}×{c.width_cm}×{c.height_cm}</span>
+            <div key={c.id} style={{ background: CAT[c.category]?.f || '#3B82F6', borderRadius: 3, padding: '2px 6px', display: 'flex', flexDirection: 'column' }}>
+              <Text style={{ fontSize: 8, color: '#fff', fontWeight: 600, lineHeight: 1.2 }}>{c.description.slice(0, 12)}</Text>
+              <Text style={{ fontSize: 7, color: 'rgba(255,255,255,0.8)', lineHeight: 1.2 }}>{c.length_cm}×{c.width_cm}×{c.height_cm} · {c.weight_kg}kg</Text>
             </div>
           ))}
         </div>
-      </div>
+      )}
+      {uld.cargoItems.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 14, color: '#94A3B8', fontSize: 11 }}>
+          从左侧拖拽货物到 ULD，或点击「AI 排舱」
+        </div>
+      )}
     </div>
   );
 }
