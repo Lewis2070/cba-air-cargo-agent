@@ -141,9 +141,15 @@ function CargoListPanel({ list, ulds, onDrag, onCargoRemove }: { list: CI[]; uld
     { title: 'm³', dataIndex: 'volume_m3', width: 54, render: (v: number) => <Text style={{ fontSize: 11, color: '#64748B' }}>{v.toFixed(3)}</Text> },
     { title: 'L×W×H(cm)', render: (_: unknown, r: CI) => <Text style={{ fontSize: 10, fontFamily: 'monospace', color: '#374151' }}>{r.length_cm}×{r.width_cm}×{r.height_cm}</Text> },
     { title: 'C/kg', render: (_: unknown, r: CI) => <Text style={{ fontSize: 10, color: r.chargeableWeight_kg > r.weight_kg ? '#EF4444' : '#16A34A', fontWeight: 700 }}>{r.chargeableWeight_kg}{r.chargeableWeight_kg > r.weight_kg ? ' ⚠' : ''}</Text> },
-    { title: '状态', width: 78, render: (_: unknown, r: CI) => {
+    { title: '状态', width: 100, render: (_: unknown, r: CI) => {
       const u = ulds.find(u => u.cargoItems.some(c => c.id === r.id));
-      return u ? <Tag color="blue" style={{ fontSize: 9 }}>{u.uld_serial || u.uld_code}{u.position ? '·' + u.position : ''}</Tag> : <Tag style={{ fontSize: 9, color: '#94A3B8', borderColor: '#E2E8F0' }}>待装</Tag>;
+      if (u) return (
+        <Space size={2} wrap>
+          <Tag color="blue" style={{ fontSize: 9 }}>{u.uld_serial || u.uld_code}{u.position ? '·' + u.position : ''}</Tag>
+          {onCargoRemove && <Button size="small" danger icon={<DeleteOutlined />} onClick={() => onCargoRemove(u.id, r.id)} style={{ fontSize: 9, padding: '0 4px', height: 20 }} />}
+        </Space>
+      );
+      return <Tag style={{ fontSize: 9, color: '#94A3B8', borderColor: '#E2E8F0' }}>待装</Tag>;
     }},
     { title: '→ULD', width: 54, render: (_: unknown, r: CI) => {
       const u = ulds.find(u => u.cargoItems.some(c => c.id === r.id));
@@ -468,17 +474,22 @@ export default function LoadPlanningPage() {
       } onCancel={closeUldModal} footer={null} width={780} destroyOnClose>
         {modalUld && (
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}><ULD3DView uld={modalUld} onRemove={() => {}} compact={false} /></div>
+            <div style={{ flex: 1 }}><ULD3DView uld={modalUld} onRemove={() => {}} onCargoRemove={removeCargoFromUld} compact={false} /></div>
             <div style={{ width: 260 }}>
               <Card size="small" title="货物清单" styles={{ body: { padding: 8 } }}>
                 {modalUld.cargoItems.map(c => (
-                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid #F8FAFC' }}>
-                    <div>
+                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: '1px solid #F8FAFC' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <Text style={{ fontSize: 10, fontWeight: 600, color: CC[c.category], display: 'block' }}>{c.awb}</Text>
                       <Text style={{ fontSize: 9.5, color: '#374151' }}>{c.description}</Text>
                       <Text style={{ fontSize: 9, color: '#94A3B8' }}>{c.length_cm}×{c.width_cm}×{c.height_cm}cm | {c.weight_kg}kg</Text>
                     </div>
-                    <Tag color={CC[c.category]} style={{ fontSize: 9, flexShrink: 0 }}>{CT[c.category].t}</Tag>
+                    <Space size={2} wrap>
+                      <Tag color={CC[c.category]} style={{ fontSize: 9, flexShrink: 0 }}>{CT[c.category].t}</Tag>
+                      <Tooltip title="从 ULD 移除货物">
+                        <Button size="small" danger icon={<DeleteOutlined />} onClick={() => removeCargoFromUld(modalUld.id, c.id)} style={{ flexShrink: 0 }} />
+                      </Tooltip>
+                    </Space>
                   </div>
                 ))}
                 {modalUld.cargoItems.length === 0 && <Text style={{ fontSize: 11, color: '#94A3B8' }}>暂无货物</Text>}
