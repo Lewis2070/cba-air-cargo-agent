@@ -1,8 +1,8 @@
+import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, Avatar, Dropdown, theme } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, Button, theme } from 'antd'
 import {
   DashboardOutlined,
-  DashboardTwoTone,
   GlobalOutlined,
   InboxOutlined,
   LineChartOutlined,
@@ -12,6 +12,8 @@ import {
   BarChartOutlined,
   LogoutOutlined,
   UserOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -33,6 +35,7 @@ export default function MainLayout() {
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { token } = theme.useToken()
+  const [collapsed, setCollapsed] = useState(false)
 
   const handleMenuClick = ({ key }: { key: string }) => {
     navigate(key)
@@ -67,8 +70,14 @@ export default function MainLayout() {
       <Sider
         theme="dark"
         width={220}
+        collapsible
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
+        trigger={null}
         style={{
           background: `linear-gradient(180deg, #1F4E79 0%, #2E75B6 100%)`,
+          transition: 'width 0.2s ease',
+          overflow: 'hidden',
         }}
       >
         <div
@@ -78,10 +87,12 @@ export default function MainLayout() {
             alignItems: 'center',
             justifyContent: 'center',
             borderBottom: '1px solid rgba(255,255,255,0.1)',
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
           }}
         >
           <div style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
-            CBA Air Cargo
+            {collapsed ? 'CBA' : 'CBA Air Cargo'}
           </div>
         </div>
         <Menu
@@ -93,20 +104,28 @@ export default function MainLayout() {
           style={{
             background: 'transparent',
             borderRight: 0,
+            overflow: 'hidden',
           }}
+          inlineCollapsed={collapsed}
         />
       </Sider>
       <Layout>
         <Header
           style={{
-            padding: '0 24px',
+            padding: '0 16px',
             background: '#fff',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'flex-end',
+            justifyContent: 'space-between',
             borderBottom: '1px solid #f0f0f0',
           }}
         >
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => setCollapsed(!collapsed)}
+            style={{ fontSize: 18 }}
+          />
           <Dropdown menu={userMenu} placement="bottomRight">
             <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1F4E79' }} />
