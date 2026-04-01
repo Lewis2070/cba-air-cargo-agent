@@ -70,31 +70,49 @@ export default function MainLayout() {
       <Sider
         theme="dark"
         width={220}
+        collapsedWidth={80}
         collapsible
         collapsed={collapsed}
         onCollapse={setCollapsed}
         trigger={null}
         style={{
-          background: `linear-gradient(180deg, #1F4E79 0%, #2E75B6 100%)`,
+          background: '#1F4E79',
+          position: 'fixed',
+          height: '100vh',
+          left: 0,
+          top: 0,
+          zIndex: 10,
           transition: 'width 0.2s ease',
           overflow: 'hidden',
         }}
       >
+        {/* Logo + 折叠按钮区 */}
         <div
           style={{
-            height: 64,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            height: 64,
+            padding: collapsed ? '0 8px' : '0 16px',
+            justifyContent: collapsed ? 'center' : 'space-between',
             borderBottom: '1px solid rgba(255,255,255,0.1)',
             overflow: 'hidden',
             whiteSpace: 'nowrap',
           }}
         >
-          <div style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
-            {collapsed ? 'CBA' : 'CBA Air Cargo'}
-          </div>
+          {!collapsed && (
+            <span style={{ color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: '0.5px' }}>
+              CBA Air Cargo
+            </span>
+          )}
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => setCollapsed(!collapsed)}
+            style={{ color: '#fff', flexShrink: 0 }}
+            size="small"
+          />
         </div>
+
         <Menu
           theme="dark"
           mode="inline"
@@ -109,23 +127,23 @@ export default function MainLayout() {
           inlineCollapsed={collapsed}
         />
       </Sider>
-      <Layout>
+
+      {/* 主内容区 - 随 Sider 宽度偏移 */}
+      <div style={{ marginLeft: collapsed ? 80 : 220, transition: 'margin-left 0.2s ease' }}>
         <Header
           style={{
             padding: '0 16px',
             background: '#fff',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            justifyContent: 'flex-end',
             borderBottom: '1px solid #f0f0f0',
+            position: 'sticky',
+            top: 0,
+            zIndex: 9,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
           }}
         >
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            style={{ fontSize: 18 }}
-          />
           <Dropdown menu={userMenu} placement="bottomRight">
             <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1F4E79' }} />
@@ -133,10 +151,10 @@ export default function MainLayout() {
             </div>
           </Dropdown>
         </Header>
-        <Content style={{ margin: 24, padding: 24, background: '#fff', minHeight: 280 }}>
+        <Content style={{ padding: 24, background: '#F5F7FA', minHeight: 'calc(100vh - 64px)' }}>
           <Outlet />
         </Content>
-      </Layout>
+      </div>
     </Layout>
   )
 }
