@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Space, Tag, Button } from 'antd';
-import { LogoutOutlined } from '@ant-design/icons';
+import { LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { ThemeProvider, ThemeToggleButton } from './components/ThemeToggle';
 import { useAuthStore } from './stores/authStore';
 import LoginPage from './pages/LoginPage';
@@ -93,7 +93,13 @@ export default function App() {
       <Layout style={{ minHeight: '100vh' }}>
         <Sidebar collapsed={collapsed} onCollapse={setCollapsed} />
         <Layout>
-          <Header style={{ background: '#fff', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderBottom: '1px solid #f0f0f0' }}>
+          <Header style={{ background: '#fff', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0' }}>
+            <Button
+              type="text"
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              onClick={() => setCollapsed(!collapsed)}
+              style={{ color: '#1F4E79', fontSize: 18 }}
+            />
             <Space>
               <ThemeToggleButton />
               <Tag color="blue" style={{ fontFamily: 'monospace' }}>V5.2</Tag>
