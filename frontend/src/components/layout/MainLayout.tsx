@@ -1,8 +1,8 @@
-import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, Avatar, Dropdown, Button, theme } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, theme } from 'antd'
 import {
   DashboardOutlined,
+  DashboardTwoTone,
   GlobalOutlined,
   InboxOutlined,
   LineChartOutlined,
@@ -12,8 +12,6 @@ import {
   BarChartOutlined,
   LogoutOutlined,
   UserOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -35,7 +33,6 @@ export default function MainLayout() {
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { token } = theme.useToken()
-  const [collapsed, setCollapsed] = useState(false)
 
   const handleMenuClick = ({ key }: { key: string }) => {
     navigate(key)
@@ -70,49 +67,23 @@ export default function MainLayout() {
       <Sider
         theme="dark"
         width={220}
-        collapsedWidth={80}
-        collapsible
-        collapsed={collapsed}
-        onCollapse={setCollapsed}
-        trigger={null}
         style={{
-          background: '#1F4E79',
-          position: 'fixed',
-          height: '100vh',
-          left: 0,
-          top: 0,
-          zIndex: 10,
-          transition: 'width 0.2s ease',
-          overflow: 'hidden',
+          background: `linear-gradient(180deg, #1F4E79 0%, #2E75B6 100%)`,
         }}
       >
-        {/* Logo + 折叠按钮区 */}
         <div
           style={{
+            height: 64,
             display: 'flex',
             alignItems: 'center',
-            height: 64,
-            padding: collapsed ? '0 8px' : '0 16px',
-            justifyContent: collapsed ? 'center' : 'space-between',
+            justifyContent: 'center',
             borderBottom: '1px solid rgba(255,255,255,0.1)',
-            overflow: 'hidden',
-            whiteSpace: 'nowrap',
           }}
         >
-          {!collapsed && (
-            <span style={{ color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: '0.5px' }}>
-              CBA Air Cargo
-            </span>
-          )}
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            style={{ color: '#fff', flexShrink: 0 }}
-            size="small"
-          />
+          <div style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
+            CBA Air Cargo
+          </div>
         </div>
-
         <Menu
           theme="dark"
           mode="inline"
@@ -122,26 +93,18 @@ export default function MainLayout() {
           style={{
             background: 'transparent',
             borderRight: 0,
-            overflow: 'hidden',
           }}
-          inlineCollapsed={collapsed}
         />
       </Sider>
-
-      {/* 主内容区 - 随 Sider 宽度偏移 */}
-      <div style={{ marginLeft: collapsed ? 80 : 220, transition: 'margin-left 0.2s ease' }}>
+      <Layout>
         <Header
           style={{
-            padding: '0 16px',
+            padding: '0 24px',
             background: '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-end',
             borderBottom: '1px solid #f0f0f0',
-            position: 'sticky',
-            top: 0,
-            zIndex: 9,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
           }}
         >
           <Dropdown menu={userMenu} placement="bottomRight">
@@ -151,10 +114,10 @@ export default function MainLayout() {
             </div>
           </Dropdown>
         </Header>
-        <Content style={{ padding: 24, background: '#F5F7FA', minHeight: 'calc(100vh - 64px)' }}>
+        <Content style={{ margin: 24, padding: 24, background: '#fff', minHeight: 280 }}>
           <Outlet />
         </Content>
-      </div>
+      </Layout>
     </Layout>
   )
 }
