@@ -7,7 +7,7 @@ import { useAuthStore } from '../stores/authStore'
 const { Text, Paragraph } = Typography
 const { Panel } = Collapse
 
-const VERSION = 'V5.2'
+const VERSION = 'V5.2.3'
 const BUILD_DATE = '2026-03-30'
 
 const VERSION_FEATURES = [
@@ -40,6 +40,7 @@ const VERSION_FEATURES = [
 ]
 
 const CHANGELOG = [
+  { version: 'V5.2.3', date: '2026-04-01', note: '修复主菜单折叠功能，Header左侧新增折叠/展开按钮' },
   { version: 'V5.2', date: '2026-03-30', note: '智能排舱重大升级：三步流程、IATA规则引擎、AI排舱+W&B包线图' },
   { version: 'V5.0', date: '2026-03-26', note: 'B767-300BCF专业版：货舱布局图、六线包线图、ULD 3D可视化、主题切换' },
   { version: 'V4.1', date: '2026-03-24', note: '3D货舱可视化、手动+AI混合订舱模式、B767-300F配置' },
