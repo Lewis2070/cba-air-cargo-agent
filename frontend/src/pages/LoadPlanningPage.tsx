@@ -125,7 +125,7 @@ function WnBChart({ cg, tw }: { cg: number; tw: number }) {
 // Cargo List Panel
 function CargoListPanel({ list, ulds, onDrag, onCargoRemove }: { list: CI[]; ulds: UI[]; onDrag: (e: React.DragEvent, id: string) => void; onCargoRemove?: (uid: string, cid: string) => void }) {
   const cols = [
-    { title: 'AWB票号', dataIndex: 'awb', width: 130, render: (t: string) => <Text style={{ fontSize: 11, fontFamily: 'monospace', color: '#1F4E79', fontWeight: 600 }}>{t}</Text>, sorter: (a: CI, b: CI) => a.awb.localeCompare(b.awb) },
+    { title: 'AWB票号', dataIndex: 'awb', width: 130, fixed: 'left' as const, render: (t: string) => <Text style={{ fontSize: 11, fontFamily: 'monospace', color: '#1F4E79', fontWeight: 600 }}>{t}</Text>, sorter: (a: CI, b: CI) => a.awb.localeCompare(b.awb) },
     { title: '物品名称', dataIndex: 'description', width: 90, render: (t: string) => <Text style={{ fontSize: 11 }}>{t}</Text> },
     { title: '代理', dataIndex: 'agent', width: 82, render: (t: string) => <Text style={{ fontSize: 10, color: '#64748B' }}>{t}</Text> },
     { title: '特货', dataIndex: 'category', width: 135, render: (cat: Cat, r: CI) => (
@@ -151,7 +151,7 @@ function CargoListPanel({ list, ulds, onDrag, onCargoRemove }: { list: CI[]; uld
       );
       return <Tag style={{ fontSize: 9, color: '#94A3B8', borderColor: '#E2E8F0' }}>待装</Tag>;
     }},
-    { title: '→ULD', width: 54, render: (_: unknown, r: CI) => {
+    { title: '→ULD', width: 54, fixed: 'right' as const, render: (_: unknown, r: CI) => {
       const u = ulds.find(u => u.cargoItems.some(c => c.id === r.id));
       if (u) return <Text style={{ fontSize: 9, color: '#94A3B8' }}>—</Text>;
       return (
@@ -180,7 +180,12 @@ function ULDBuildPanel({ ulds, onRemove, onCargoRemove, onDrop, openUldModal }: 
   ulds: UI[]; onRemove: (id: string) => void; onCargoRemove: (uid: string, cid: string) => void;
   onDrop: (e: React.DragEvent, uid: string) => void;
 }) {
+  // 默认全部折叠，只有点击才展开
+  const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
+  const toggle = (id: string) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
   const h = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; };
+  const deckColor = (d: string) => d === 'nose' ? '#C2410C' : d === 'main' ? '#1E4E8A' : '#065F46';
+  const deckBg = (d: string) => d === 'nose' ? '#FFF7ED' : d === 'main' ? '#EFF6FF' : '#ECFDF5';
   return (
     <Card size="small"
       title={<Space size={8}><Text style={{ fontSize: 13, fontWeight: 700, color: '#1F4E79' }}>📋 ULD组板工作台</Text><Badge count={ulds.length} /></Space>}
@@ -189,18 +194,38 @@ function ULDBuildPanel({ ulds, onRemove, onCargoRemove, onDrop, openUldModal }: 
         <div style={{ textAlign: 'center', padding: '24px 0', color: '#94A3B8', fontSize: 12 }}>从左侧拖拽货物或使用AI排舱</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
-          {ulds.map(u => (
-            <div key={u.id} draggable onDragOver={h} onDrop={(e) => onDrop(e, u.id)}
-              onDragStart={(e) => { e.dataTransfer.setData('uldId', u.id); e.dataTransfer.setData('type', 'uld'); }}
-              style={{
-                border: '2px solid ' + (u.position ? '#16A34A' : '#E2E8F0'),
-                borderRadius: 8, padding: 8,
-                background: u.position ? '#F0FDF4' : '#fff',
-                cursor: 'pointer', transition: 'all 0.15s',
-              }}>
-              <ULD3DView uld={u} onRemove={onRemove} onCargoRemove={onCargoRemove} onExpand={openUldModal} />
-            </div>
-          ))}
+          {ulds.map(u => {
+            const isExp = !!expanded[u.id];
+            const wt = u.cargoItems.reduce((s: number, c: CI) => s + c.weight_kg, 0);
+            return (
+              <div key={u.id}
+                draggable onDragOver={h} onDrop={(e) => { e.stopPropagation(); onDrop(e, u.id); }}
+                onDragStart={(e) => { e.dataTransfer.setData('uldId', u.id); e.dataTransfer.setData('type', 'uld'); }}
+                style={{
+                  border: `2px solid ${u.position ? deckColor(u.deck) : '#E2E8F0'}`,
+                  borderRadius: 8, overflow: 'hidden',
+                  background: u.position ? deckBg(u.deck) : '#fff',
+                  transition: 'all 0.15s', cursor: 'pointer',
+                }}>
+                {/* 折叠行：始终显示 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', cursor: 'pointer' }}
+                  onClick={() => toggle(u.id)}>
+                  <Tag style={{ fontSize: 9, margin: 0, borderRadius: 10, background: deckColor(u.deck), color: '#fff', border: 'none' }}>{u.uld_code}</Tag>
+                  <Text style={{ fontSize: 10, color: '#64748B', flex: 1 }}>{u.uld_serial}</Text>
+                  <Text style={{ fontSize: 10 }}>{u.cargoItems.length}件 <b>{wt}kg</b></Text>
+                  {u.position && <Tag style={{ fontSize: 8, margin: 0 }}>{u.position}</Tag>}
+                  <Button size="small" icon={isExp ? '▲' : '▼'} style={{ fontSize: 9, padding: '0 4px', height: 20, border: 'none', background: 'none' }}
+                    onClick={(e) => { e.stopPropagation(); toggle(u.id); }} />
+                </div>
+                {/* 展开内容 */}
+                {isExp && (
+                  <div style={{ borderTop: `1px dashed ${deckColor(u.deck)}40`, padding: 8 }}>
+                    <ULD3DView uld={u} onRemove={onRemove} onCargoRemove={onCargoRemove} onExpand={openUldModal} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </Card>
