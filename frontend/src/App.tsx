@@ -102,7 +102,7 @@ export default function App() {
             />
             <Space>
               <ThemeToggleButton />
-              <Tag color="blue" style={{ fontFamily: 'monospace' }}>V5.2.3</Tag>
+              <Tag color="blue" style={{ fontFamily: 'monospace' }}>V5.3.0</Tag>
               <Button icon={<LogoutOutlined />} danger size="small" onClick={handleLogout}>退出</Button>
             </Space>
           </Header>

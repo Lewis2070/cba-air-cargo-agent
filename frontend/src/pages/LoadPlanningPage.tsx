@@ -5,7 +5,7 @@ import { ThunderboltOutlined, ReloadOutlined, CheckCircleOutlined, ExclamationCi
 import { getMainDeckPositions, getNosePositions, getLowerFwdPositions, getLowerAftPositions, calculateCG } from '../data/hold_positions';
 import { findULDType } from '../data/uld_specs';
 import { checkULDCompatibility } from '../data/dgr_rules';
-import ULD3DView from '../components/cargo/ULD3DView';
+import { ULD3DView, Fullscreen3D } from '../components/cargo/ULD3DView';
 import ConfirmModal from '../components/cargo/ConfirmModal';
 import type { CI, UI, PlanResult, Cat } from '../components/cargo/CargoTypes';
 
@@ -176,9 +176,9 @@ function CargoListPanel({ list, ulds, onDrag, onCargoRemove }: { list: CI[]; uld
 }
 
 // ULD Build Panel
-function ULDBuildPanel({ ulds, onRemove, onCargoRemove, onDrop, onOpenModal }: {
+function ULDBuildPanel({ ulds, onRemove, onCargoRemove, onDrop, openUldModal }: {
   ulds: UI[]; onRemove: (id: string) => void; onCargoRemove: (uid: string, cid: string) => void;
-  onDrop: (e: React.DragEvent, uid: string) => void; onOpenModal: (uld: UI) => void;
+  onDrop: (e: React.DragEvent, uid: string) => void;
 }) {
   const h = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; };
   return (
@@ -192,14 +192,13 @@ function ULDBuildPanel({ ulds, onRemove, onCargoRemove, onDrop, onOpenModal }: {
           {ulds.map(u => (
             <div key={u.id} draggable onDragOver={h} onDrop={(e) => onDrop(e, u.id)}
               onDragStart={(e) => { e.dataTransfer.setData('uldId', u.id); e.dataTransfer.setData('type', 'uld'); }}
-              onClick={() => onOpenModal(u)}
               style={{
                 border: '2px solid ' + (u.position ? '#16A34A' : '#E2E8F0'),
                 borderRadius: 8, padding: 8,
                 background: u.position ? '#F0FDF4' : '#fff',
                 cursor: 'pointer', transition: 'all 0.15s',
               }}>
-              <ULD3DView uld={u} onRemove={onRemove} onCargoRemove={onCargoRemove} onOpenModal={onOpenModal} />
+              <ULD3DView uld={u} onRemove={onRemove} onCargoRemove={onCargoRemove} onExpand={openUldModal} />
             </div>
           ))}
         </div>
@@ -461,43 +460,19 @@ export default function LoadPlanningPage() {
       {/* Three column layout */}
       <Row gutter={8}>
         <Col span={8}><CargoListPanel list={d} ulds={ulds} onDrag={handleCargoDrag} /></Col>
-        <Col span={8}><ULDBuildPanel ulds={ulds} onRemove={removeUld} onCargoRemove={removeCargoFromUld} onDrop={handleUldDrop} onOpenModal={openUldModal} /></Col>
+        <Col span={8}><ULDBuildPanel ulds={ulds} onRemove={removeUld} onCargoRemove={removeCargoFromUld} onDrop={handleUldDrop} openUldModal={openUldModal} /></Col>
         <Col span={8}><AircraftHoldWithSwap ulds={ulds} onSlotDrop={handleUldSlotDrop} onEmptySlotClick={handleEmptySlotClick} /></Col>
       </Row>
 
-      {/* ULD detail modal */}
-      <Modal open={!!modalUld} title={
-        <Space>
-          <Text style={{ fontSize: 14, fontWeight: 700, color: '#1F4E79' }}>🔍 ULD大图查看</Text>
-          {modalUld && <Tag color="blue" style={{ margin: 0 }}>{modalUld.uld_serial || modalUld.uld_code}</Tag>}
-        </Space>
-      } onCancel={closeUldModal} footer={null} width={780} destroyOnClose>
-        {modalUld && (
-          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}><ULD3DView uld={modalUld} onRemove={() => {}} onCargoRemove={removeCargoFromUld} compact={false} /></div>
-            <div style={{ width: 260 }}>
-              <Card size="small" title="货物清单" styles={{ body: { padding: 8 } }}>
-                {modalUld.cargoItems.map(c => (
-                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: '1px solid #F8FAFC' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={{ fontSize: 10, fontWeight: 600, color: CC[c.category], display: 'block' }}>{c.awb}</Text>
-                      <Text style={{ fontSize: 9.5, color: '#374151' }}>{c.description}</Text>
-                      <Text style={{ fontSize: 9, color: '#94A3B8' }}>{c.length_cm}×{c.width_cm}×{c.height_cm}cm | {c.weight_kg}kg</Text>
-                    </div>
-                    <Space size={2} wrap>
-                      <Tag color={CC[c.category]} style={{ fontSize: 9, flexShrink: 0 }}>{CT[c.category].t}</Tag>
-                      <Tooltip title="从 ULD 移除货物">
-                        <Button size="small" danger icon={<DeleteOutlined />} onClick={() => removeCargoFromUld(modalUld.id, c.id)} style={{ flexShrink: 0 }} />
-                      </Tooltip>
-                    </Space>
-                  </div>
-                ))}
-                {modalUld.cargoItems.length === 0 && <Text style={{ fontSize: 11, color: '#94A3B8' }}>暂无货物</Text>}
-              </Card>
-            </div>
-          </div>
-        )}
-      </Modal>
+      {/* ULD Fullscreen 3D — 替代旧 Modal */}
+      {modalUld && (
+        <Fullscreen3D
+          uld={modalUld}
+          onClose={closeUldModal}
+          onCargoRemove={removeCargoFromUld}
+        />
+      )}
+
 
       {/* Confirm plan modal */}
       <ConfirmModal
