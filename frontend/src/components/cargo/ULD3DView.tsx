@@ -8,6 +8,7 @@ import React, { useState, useRef, useCallback, useLayoutEffect } from 'react';
 import { Tag, Typography, Space, Button, Tooltip } from 'antd';
 import { DeleteOutlined, ExpandOutlined, ShrinkOutlined } from '@ant-design/icons';
 import type { CI, UI } from './CargoTypes';
+import { checkULDCompatibility } from '../../data/dgr_rules';
 
 const { Text } = Typography;
 
@@ -266,6 +267,18 @@ export function Fullscreen3D({ uld, onClose, onCargoRemove }: Fullscreen3DProps)
   };
   const [L, W, H] = specs[uld.uld_code] || specs['LD-6'];
   const boxes = gravityPack(uld.cargoItems, L, W, H);
+  // DGR 冲突计算（使用 IATA DGR 完整规则）
+  const dgrConflicts: string[] = [];
+  uld.cargoItems.forEach((c1, i) => {
+    uld.cargoItems.slice(i + 1).forEach(c2 => {
+      if ((c1.category === 'dgr' || c2.category === 'dgr') && c1.dgr_class && c2.dgr_class) {
+        const result = checkULDCompatibility(c1.dgr_class, c2.dgr_class);
+        if (!result.allowed) {
+          dgrConflicts.push(`${c1.dgr_class}↔${c2.dgr_class}：${result.message}`);
+        }
+      }
+    });
+  });
   const fillPct = uld.cargoItems.reduce((s, c) => s + c.volume_m3, 0) / (L * W * H / 1e6);
   const fillColor = fillPct > 0.85 ? '#EF4444' : fillPct > 0.6 ? '#F59E0B' : '#16A34A';
 
@@ -323,6 +336,14 @@ export function Fullscreen3D({ uld, onClose, onCargoRemove }: Fullscreen3DProps)
         <Text style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>拖拽旋转 · 滚轮缩放 · ESC关闭</Text>
         <Button size="small" onClick={onClose} style={{ marginLeft: 8 }}>关闭</Button>
       </div>
+
+      {/* DGR 冲突明细 Tips 栏 */}
+      {dgrConflicts.length > 0 && (
+        <div style={{ background: '#FEF2F2', borderBottom: '1px solid #FECACA', padding: '8px 12px', fontSize: 11, color: '#DC2626', lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 700, marginBottom: 2 }}>⚠️ DGR隔离冲突（{dgrConflicts.length}组）</div>
+          {dgrConflicts.map((p, i) => <div key={i}>· {p}</div>)}
+        </div>
+      )}
 
       {/* Body */}
       <div className="fs-body" onClick={e => e.stopPropagation()}>
@@ -384,11 +405,13 @@ export function Fullscreen3D({ uld, onClose, onCargoRemove }: Fullscreen3DProps)
                 const col = CAT[c.category]?.c || '#3B82F6';
                 return (
                   <div key={c.id} style={{ background: col + '18', border: `1px solid ${col}44`, borderRadius: 6, padding: '5px 7px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 10, fontWeight: 600, color: col }}>{c.description?.slice(0, 16)}</div>
+                        <div style={{ fontSize: 9, color: '#475569', marginTop: 1 }}>{c.awb || '无票号'}</div>
                         <div style={{ fontSize: 9, color: '#64748B', marginTop: 1 }}>{c.length_cm}×{c.width_cm}×{c.height_cm}cm · {c.weight_kg}kg</div>
-                        {c.dgr_class && <div style={{ fontSize: 9, color: '#EF4444', marginTop: 1 }}>⚠️ {c.dgr_class}{c.un_number ? ` · ${c.un_number}` : ''}</div>}
+                        {c.dgr_class && <div style={{ fontSize: 9, color: '#EF4444', marginTop: 1 }}>⚠️ {c.dgr_class}{c.un_number ? ` · UN${c.un_number}` : ''}</div>}
+                        <div style={{ fontSize: 8, color: col, marginTop: 2 }}>{CAT[c.category]?.label || '普通'}</div>
                       </div>
                       <Button size="small" danger icon={<DeleteOutlined />} style={{ fontSize: 10, flexShrink: 0 }} onClick={() => handleDelete(c.id)} />
                     </div>

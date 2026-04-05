@@ -1,7 +1,7 @@
 // CBA v5.2 智能排舱系统
 import React, { useState, useMemo } from 'react';
 import { Card, Table, Button, Select, Tag, Space, Divider, Modal, Alert, Badge, Tooltip, message, Row, Col, Typography } from 'antd';
-import { ThunderboltOutlined, ReloadOutlined, CheckCircleOutlined, ExclamationCircleOutlined, DragOutlined } from '@ant-design/icons';
+import { ThunderboltOutlined, ReloadOutlined, CheckCircleOutlined, DragOutlined } from '@ant-design/icons';
 import { getMainDeckPositions, getNosePositions, getLowerFwdPositions, getLowerAftPositions, calculateCG } from '../data/hold_positions';
 import { findULDType } from '../data/uld_specs';
 import { checkULDCompatibility } from '../data/dgr_rules';
@@ -407,22 +407,6 @@ export default function LoadPlanningPage() {
     if (free) setUlds(prev => prev.map(u => u.id === free.id ? { ...u, position: posCode } : u));
   };
 
-  const warns = useMemo(() => {
-    const w: string[] = [];
-    ulds.forEach(u => {
-      u.cargoItems.forEach(c1 => {
-        u.cargoItems.forEach(c2 => {
-          if (c1.id >= c2.id) return;
-          if (c1.category === 'dgr' || c2.category === 'dgr') {
-            const r = checkULDCompatibility(c1.dgr_class || '', c2.dgr_class || '');
-            if (!r.allowed) w.push(c1.description + ' 和 ' + c2.description + ': ' + r.message);
-          }
-        });
-      });
-    });
-    return w;
-  }, [ulds]);
-
   // 检查货物 c 能否加入目标 ULD（基于 IATA DGR 隔离规则）
   const canAddToULD = (existingItems: CI[], newItem: CI): { allowed: boolean; reason: string } => {
     for (const existing of existingItems) {
@@ -547,11 +531,6 @@ export default function LoadPlanningPage() {
         </div>
       </div>
 
-      {/* DGR warnings */}
-      {warns.length > 0 && (
-        <Alert type="error" icon={<ExclamationCircleOutlined />} message="DGR冲突"
-          description={warns.slice(0, 3).join('；')} closable style={{ marginBottom: 8 }} />
-      )}
 
       {/* Three column layout */}
       <Row gutter={8}>

@@ -81,19 +81,38 @@ else
   fail "登录失败: $LOGIN_RESP"
 fi
 
-# ─── Test 6: 登录页显示版本号 ─────────────────────────────────────────
-info "Test 6: 登录页版本号 (V5.2)"
-LOGIN_HTML=$(curl -s --max-time 10 "$HOST/")
-if echo "$LOGIN_HTML" | grep -q "V5.2"; then
-  pass "登录页包含版本号 V5.2"
+# ─── Test 6: 登录页版本信息完整性（动态版本检查） ─────────────────────
+info "Test 6: 登录页版本信息完整性"
+# 动态读取源码中的最新版本信息
+LOGIN_PAGE="frontend/src/pages/LoginPage.tsx"
+EXPECTED_VERSION=$(grep -E "VERSION\s*=" "$LOGIN_PAGE" | grep -oP "V[0-9]+\.[0-9]+\.[0-9]+" | head -1)
+EXPECTED_DATE=$(grep -E "BUILD_DATE\s*=" "$LOGIN_PAGE" | grep -oP "\d{4}-\d{2}-\d{2}" | head -1)
+
+# 远程获取 index.js（构建产物）
+curl -s --max-time 10 "$HOST/assets/index.js" -o /tmp/cba_index.js
+
+if [ -z "$EXPECTED_VERSION" ] || [ -z "$EXPECTED_DATE" ]; then
+  fail "LoginPage VERSION/BUILD_DATE 常量未定义"
 else
-  fail "登录页未包含版本号 V5.2"
+  if grep -q "$EXPECTED_VERSION" /tmp/cba_index.js; then
+    pass "登录页包含最新版本号 $EXPECTED_VERSION"
+  else
+    fail "登录页未包含最新版本号 $EXPECTED_VERSION"
+  fi
+
+  if grep -q "$EXPECTED_DATE" /tmp/cba_index.js; then
+    pass "登录页包含构建日期 $EXPECTED_DATE（index.js）"
+  else
+    fail "登录页未包含构建日期 $EXPECTED_DATE（index.js）"
+  fi
 fi
 
-if echo "$LOGIN_HTML" | grep -q "CBA Air Cargo"; then
-  pass "登录页包含系统名称 'CBA Air Cargo'"
-else
-  fail "登录页未包含系统名称"
+if [ -f /tmp/cba_index.js ]; then
+  if grep -q "CBA Air Cargo" /tmp/cba_index.js; then
+    pass "登录页包含系统名称 'CBA Air Cargo'"
+  else
+    fail "登录页未包含系统名称"
+  fi
 fi
 
 # ─── Test 7: 主要页面路由可访问（HTTP 200） ─────────────────────────────
@@ -150,7 +169,7 @@ info "Test 10: 关键组件代码存在性"
 LOCAL_FILES=(
   "/workspace/cba-air-cargo-agent/frontend/src/pages/LoadPlanningPage.tsx:dgr_rules"
   "/workspace/cba-air-cargo-agent/frontend/src/pages/LoadPlanningPage.tsx:uld_serial"
-  "/workspace/cba-air-cargo-agent/frontend/src/pages/LoginPage.tsx:V5.2"
+  "/workspace/cba-air-cargo-agent/frontend/src/pages/LoginPage.tsx:VERSION\s*="
   "/workspace/cba-air-cargo-agent/frontend/src/data/dgr_rules.ts:DGR_SEGREGATION"
   "/workspace/cba-air-cargo-agent/frontend/src/data/hold_positions.ts:HOLD_POSITIONS"
   "/workspace/cba-air-cargo-agent/frontend/src/data/uld_specs.ts:ULD_TYPES"
