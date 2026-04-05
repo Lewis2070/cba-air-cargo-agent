@@ -483,10 +483,10 @@ export function ULD3DView({ uld, onRemove, onCargoRemove, onExpand, defaultExpan
 
       {/* Legend */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
-        {Object.entries(CAT).map(([k, v]) => (
+        {['normal','dgr','live_animal','perishable'].filter(k => uld.cargoItems.some(c => c.category === k)).map(k => (
           <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <div style={{ width: 8, height: 8, background: v.c, borderRadius: 2 }} />
-            <span style={{ fontSize: 8, color: '#374151' }}>{v.label}</span>
+            <div style={{ width: 8, height: 8, background: CAT[k].c, borderRadius: 2 }} />
+            <span style={{ fontSize: 8, color: '#374151' }}>{CAT[k].label}</span>
           </div>
         ))}
       </div>

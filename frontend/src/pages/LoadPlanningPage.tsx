@@ -186,6 +186,34 @@ function ULDBuildPanel({ ulds, onRemove, onCargoRemove, onDrop, openUldModal }: 
   const h = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; };
   const deckColor = (d: string) => d === 'nose' ? '#C2410C' : d === 'main' ? '#1E4E8A' : '#065F46';
   const deckBg = (d: string) => d === 'nose' ? '#FFF7ED' : d === 'main' ? '#EFF6FF' : '#ECFDF5';
+
+  // 每个 ULD 的 DGR 冲突警告（仅当 cargoItems 变化时重算，不在渲染路径重复计算）
+  const uldDgrMap = useMemo(() => {
+    const m = new Map<string, string[]>();
+    ulds.forEach(u => {
+      const warns: string[] = [];
+      u.cargoItems.forEach((c1, i) => {
+        u.cargoItems.slice(i + 1).forEach(c2 => {
+          if (c1.category === 'dgr' || c2.category === 'dgr') {
+            const r = checkULDCompatibility(c1.dgr_class || '', c2.dgr_class || '');
+            if (!r.allowed) warns.push(`${c1.description}/${c2.description}`);
+          }
+        });
+      });
+      m.set(u.id, warns);
+    });
+    return m;
+  }, [ulds]);
+
+  // 每个 ULD 的货物类型标签
+  const uldCatsMap = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    ulds.forEach(u => {
+      const cats = new Set(u.cargoItems.map(c => c.category));
+      m.set(u.id, cats);
+    });
+    return m;
+  }, [ulds]);
   return (
     <Card size="small"
       title={<Space size={8}><Text style={{ fontSize: 13, fontWeight: 700, color: '#1F4E79' }}>📋 ULD组板工作台</Text><Badge count={ulds.length} /></Space>}
@@ -211,6 +239,11 @@ function ULDBuildPanel({ ulds, onRemove, onCargoRemove, onDrop, openUldModal }: 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', cursor: 'pointer' }}
                   onClick={() => toggle(u.id)}>
                   <Tag style={{ fontSize: 9, margin: 0, borderRadius: 10, background: deckColor(u.deck), color: '#fff', border: 'none' }}>{u.uld_code}</Tag>
+                  {uldCatsMap.get(u.id)?.has('dgr') && <Tag color="error" style={{ fontSize: 9, margin: 0 }}>危险品</Tag>}
+                  {uldCatsMap.get(u.id)?.has('live_animal') && <Tag color="success" style={{ fontSize: 9, margin: 0 }}>活体</Tag>}
+                  {uldCatsMap.get(u.id)?.has('perishable') && <Tag color="warning" style={{ fontSize: 9, margin: 0 }}>生鲜</Tag>}
+                  {!uldCatsMap.get(u.id)?.has('dgr') && !uldCatsMap.get(u.id)?.has('live_animal') && !uldCatsMap.get(u.id)?.has('perishable') && <Tag style={{ fontSize: 9, margin: 0 }}>普通</Tag>}
+                  {uldDgrMap.get(u.id)?.length > 0 && <Tag color="error" style={{ fontSize: 9, margin: 0 }}>⚠️冲突</Tag>}
                   <Text style={{ fontSize: 10, color: '#64748B', flex: 1 }}>{u.uld_serial}</Text>
                   <Text style={{ fontSize: 10 }}>{u.cargoItems.length}件 <b>{wt}kg</b></Text>
                   {u.position && <Tag style={{ fontSize: 8, margin: 0 }}>{u.position}</Tag>}
@@ -220,7 +253,7 @@ function ULDBuildPanel({ ulds, onRemove, onCargoRemove, onDrop, openUldModal }: 
                 {/* 展开内容 */}
                 {isExp && (
                   <div style={{ borderTop: `1px dashed ${deckColor(u.deck)}40`, padding: 8 }}>
-                    <ULD3DView uld={u} onRemove={onRemove} onCargoRemove={onCargoRemove} onExpand={openUldModal} />
+                    <ULD3DView uld={u} onRemove={onRemove} onCargoRemove={onCargoRemove} onExpand={openUldModal}  />
                   </div>
                 )}
               </div>
@@ -390,18 +423,45 @@ export default function LoadPlanningPage() {
     return w;
   }, [ulds]);
 
+  // 检查货物 c 能否加入目标 ULD（基于 IATA DGR 隔离规则）
+  const canAddToULD = (existingItems: CI[], newItem: CI): { allowed: boolean; reason: string } => {
+    for (const existing of existingItems) {
+      if (existing.category === 'dgr' || newItem.category === 'dgr') {
+        const r = checkULDCompatibility(existing.dgr_class || '', newItem.dgr_class || '');
+        if (!r.allowed) return { allowed: false, reason: r.message };
+      }
+    }
+    return { allowed: true, reason: '' };
+  };
+
+  // 估算加入货物后，指定舱位重心是否仍在 W&B 安全包线内（9%~33% MAC）
+  const canFitInPosition = (positionCode: string, uldWeight: number): boolean => {
+    const cg = calculateCG([{ weight_kg: uldWeight, position_code: positionCode }]);
+    return cg.status !== 'over_limit';
+  };
+
   const aiPack = () => {
     const placedIds = new Set(ulds.flatMap(u => u.cargoItems.map(c => c.id)));
     const un = d.filter(c => !placedIds.has(c.id));
     if (!un.length) { message.info('所有货物已分配完毕'); return; }
-    const sorted = [...un].sort((a, b) => (b.chargeableWeight_kg * b.fee_per_kg) - (a.chargeableWeight_kg * a.fee_per_kg));ht_kg * a.fee_per
+    const sorted = [...un].sort((a, b) => (b.chargeableWeight_kg * b.fee_per_kg) - (a.chargeableWeight_kg * a.fee_per_kg));
     const nUI: UI[] = [];
     const mp = [...getMainDeckPositions(), ...getLowerFwdPositions(), ...getLowerAftPositions()];
+    const mainSafe = mp.filter(p => p.code.startsWith('M'));
+    const lowerSafe = mp.filter(p => p.code.startsWith('L'));
+
     sorted.forEach(c => {
       const deck = c.category === 'live_animal' || c.category === 'perishable' ? 'lower' : 'main';
-      const ex = nUI.find(x => x.deck === deck && x.cargoItems.reduce((s, i) => s + i.weight_kg, 0) + c.weight_kg <= 5000 && x.cargoItems.length < 10);
-      if (ex) { ex.cargoItems.push(c); }
-      else {
+      // 候选ULD：满足载重+数量 AND DGR兼容（关键约束）
+      const candidates = nUI
+        .filter(x => x.deck === deck
+          && x.cargoItems.reduce((s, i) => s + i.weight_kg, 0) + c.weight_kg <= 5000
+          && x.cargoItems.length < 10)
+        .filter(x => canAddToULD(x.cargoItems, c).allowed)
+        .sort((a, b) => b.cargoItems.reduce((s, i) => s + i.weight_kg, 0) - a.cargoItems.reduce((s, i) => s + i.weight_kg, 0));
+      if (candidates.length > 0) {
+        candidates[0].cargoItems.push(c);
+      } else {
         const code = deck === 'main' ? 'LD-6' : 'LD-3';
         nUI.push({
           id: 'AI-' + Date.now() + '-' + nUI.length,
@@ -412,7 +472,27 @@ export default function LoadPlanningPage() {
         });
       }
     });
-    nUI.forEach((u, i) => { if (mp[i]) u.position = mp[i].code; });
+
+    // 位置分配：主舱优先填W&B安全舱位
+    let mainIdx = 0, lowerIdx = 0;
+    nUI.forEach(u => {
+      if (u.deck === 'main' && mainIdx < mainSafe.length) {
+        u.position = mainSafe[mainIdx++].code;
+      } else if (u.deck === 'lower' && lowerIdx < lowerSafe.length) {
+        u.position = lowerSafe[lowerIdx++].code;
+      }
+    });
+
+    // 无法装载货物：如有则告知（因DGR冲突或舱位不足）
+    const placedIdsAfter = new Set(nUI.flatMap(u => u.cargoItems.map(c => c.id)));
+    const stillUnplaced = un.filter(c => !placedIdsAfter.has(c.id));
+    if (stillUnplaced.length > 0) {
+      message.warning(
+        `以下货物无法装载（存在DGR隔离冲突或舱位不足）：${stillUnplaced.map(c => c.awb).join('、')}`,
+        5
+      );
+    }
+
     setConfirmPlan(buildPlan(nUI));
     setConfirmMode('ai');
     setConfirmOpen(true);
