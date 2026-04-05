@@ -453,16 +453,7 @@ export default function LoadPlanningPage() {
         display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap',
         background: '#fff', padding: '8px 12px', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
       }}>
-        <Text style={{ fontSize: 15, fontWeight: 700, color: '#1F4E79', marginRight: 4 }}>🛩️ CBA v5.2 智能排舱</Text>
-        <Select
-          size="small" placeholder="+添加ULD板型" style={{ width: 160 }}
-          onChange={v => addUld(v as string)}
-          options={[
-            { value: 'LD-7', label: 'LD-7 Q7/RAP 主舱' },
-            { value: 'LD-6', label: 'LD-6 Q6/AKE 主舱' },
-            { value: 'LD-3', label: 'LD-3 AKE 下舱' },
-          ]}
-        />
+
         <Button size="small" type="primary" icon={<ThunderboltOutlined />} onClick={aiPack}>AI排舱</Button>
         <Button size="small" icon={<CheckCircleOutlined />} onClick={handleManualConfirm}
           style={{ background: '#16A34A', borderColor: '#16A34A', color: '#fff' }}>完成排舱</Button>
@@ -485,7 +476,17 @@ export default function LoadPlanningPage() {
       {/* Three column layout */}
       <Row gutter={8}>
         <Col span={8}><CargoListPanel list={d} ulds={ulds} onDrag={handleCargoDrag} /></Col>
-        <Col span={8}><ULDBuildPanel ulds={ulds} onRemove={removeUld} onCargoRemove={removeCargoFromUld} onDrop={handleUldDrop} openUldModal={openUldModal} /></Col>
+        <Col span={8}>
+          <div style={{ display: 'flex', gap: 5, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, fontWeight: 700, color: '#1F4E79', marginRight: 4 }}>ULD板型：</Text>
+            <Button size="small" style={{ fontWeight: 700, borderColor: '#1E40AF', color: '#1E40AF' }} onClick={() => addUld('LD-7')}>Q7 ×{ulds.filter(u => u.uld_code === 'LD-7').length}</Button>
+            <Button size="small" style={{ fontWeight: 700, borderColor: '#2563EB', color: '#2563EB' }} onClick={() => addUld('LD-6')}>Q6 ×{ulds.filter(u => u.uld_code === 'LD-6').length}</Button>
+            <Button size="small" style={{ fontWeight: 700, borderColor: '#065F46', color: '#065F46' }} onClick={() => addUld('LD-3')}>AKE ×{ulds.filter(u => u.uld_code === 'LD-3').length}</Button>
+            <Button size="small" style={{ fontWeight: 700, borderColor: '#059669', color: '#059669' }} onClick={() => addUld('LD-2')}>AAU ×{ulds.filter(u => u.uld_code === 'LD-2').length}</Button>
+            <Button size="small" style={{ fontWeight: 700, borderColor: '#7C3AED', color: '#7C3AED' }} onClick={() => addUld('LD-4')}>PLA ×{ulds.filter(u => u.uld_code === 'LD-4').length}</Button>
+            <Button size="small" style={{ fontWeight: 700, borderColor: '#64748B', color: '#64748B' }} onClick={() => addUld('BULK')}>BULK ×{ulds.filter(u => u.uld_code === 'BULK').length}</Button>
+          </div>
+          <ULDBuildPanel ulds={ulds} onRemove={removeUld} onCargoRemove={removeCargoFromUld} onDrop={handleUldDrop} openUldModal={openUldModal} /></Col>
         <Col span={8}><AircraftHoldWithSwap ulds={ulds} onSlotDrop={handleUldSlotDrop} onEmptySlotClick={handleEmptySlotClick} /></Col>
       </Row>
 
