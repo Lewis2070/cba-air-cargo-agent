@@ -50,25 +50,36 @@ if [[ "$TARGET" == "uat" ]]; then
   PORT=8080
   ORIGIN="http://43.159.50.213:8080"
   echo "=== 部署目标：UAT (port 8080) ==="
+
+  # UAT 自动注入：版本号 + 日期 + 变更日志（由 inject_version.sh 完成）
+  # inject_version.sh 会同时更新 LoginPage.tsx 和 index.html 模板
+  echo "[0/7] UAT 自动注入版本信息..."
+  bash $REPO_DIR/scripts/inject_version.sh \
+    "V5.4.1" \
+    "DGR冲突告警：Fullscreen3D顶部红色Tips栏；IATA 16个class全规则覆盖"
+  echo "VERSION_INJECTED"
+
 elif [[ "$TARGET" == "production" ]]; then
   ASSETS_DIR="/var/www/assets"
   PORT=80
   ORIGIN="http://43.159.50.213"
   echo "=== 部署目标：生产 (port 80) ==="
+  # ⚠️ 生产环境：禁止自动注入，必须由人工静态更新 LoginPage.tsx
+  echo "⚠️ 生产部署：VERSION/BUILD_DATE/CHANGELOG 需人工确认已更新"
 else
   echo "用法: bash deploy.sh <uat|production>"
   exit 1
 fi
 
-echo "[1/6] 构建前端 (API=$API)..."
+echo "[1/7] 构建前端 (API=$API)..."
 cd $REPO_DIR/frontend
 VITE_API_URL=$API npm run build 2>&1 | tail -3
 echo "BUILD_OK"
 
-echo "[2/6] 腾讯云 — 清理旧资源..."
+echo "[2/7] 腾讯云 — 清理旧资源..."
 $SSH $HOST "rm -rf $ASSETS_DIR/* && mkdir -p $ASSETS_DIR/assets && echo CLEANED:$ASSETS_DIR"
 
-echo "[3/6] 上传 index.html..."
+echo "[3/7] 上传 index.html..."
 scp -i $KEY -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=60 \
   $REPO_DIR/frontend/dist/index.html \
   $HOST:/var/www/index.html
@@ -78,19 +89,19 @@ if [[ "$TARGET" == "uat" ]]; then
 fi
 echo "index.html OK"
 
-echo "[4/6] 上传 assets → $ASSETS_DIR ..."
+echo "[4/7] 上传 assets → $ASSETS_DIR ..."
 scp -i $KEY -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=120 \
   -r $REPO_DIR/frontend/dist/assets/* \
   $HOST:$ASSETS_DIR/assets/
 echo "assets OK"
 
-echo "[5/6] 重载 nginx..."
+echo "[5/7] 重载 nginx..."
 $SSH $HOST "nginx -s reload && echo NGINX_RELOADED"
 
 # ─────────────────────────────────────────────
 # 后置验证：Preflight CORS 验证（模拟浏览器真实行为）
 # ─────────────────────────────────────────────
-echo "[6/6] CORS preflight 验证（模拟浏览器 OPTIONS 请求）..."
+echo "[6/7] CORS preflight 验证（模拟浏览器 OPTIONS 请求）..."
 
 PREFLIGHT_RESP=$(curl -s --max-time 8 -i -X OPTIONS \
   -H "Origin: $ORIGIN" \

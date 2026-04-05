@@ -7,8 +7,8 @@ import { useAuthStore } from '../stores/authStore'
 const { Text, Paragraph } = Typography
 const { Panel } = Collapse
 
-const VERSION = 'V5.3.0'
-const BUILD_DATE = '2026-03-30'
+const VERSION = 'V5.4.1'
+const BUILD_DATE = '2026-04-05'
 
 const VERSION_FEATURES = [
   { tag: '新增', color: 'blue', items: [
@@ -40,6 +40,12 @@ const VERSION_FEATURES = [
 ]
 
 const CHANGELOG = [
+  { version: 'V5.4.1', date: '2026-04-05', note: 'DGR冲突告警：Fullscreen3D顶部红色Tips栏；IATA 16个class全规则覆盖' },
+  { version: 'V5.4.1', date: '2026-04-05', note: 'DGR冲突告警：Fullscreen3D顶部红色Tips栏；IATA 16个class全规则覆盖' },
+  { version: 'V5.4.1', date: '2026-04-05', note: 'DGR冲突告警：Fullscreen3D顶部红色Tips栏；IATA 16个class全规则覆盖' },
+  { version: 'V5.4.0', date: '2026-04-05', note: 'AI排舱重大优化：①DGR冲突预拦截(ICAO/IATA隔离规则)；②无法装载货物自动告知；③ULD卡片动态货物类型标签(普通/危险品/活体/生鲜)；④ULD展开图例改为动态(仅显示实际货物类型)；⑤贪心算法+W&B重心预判' },
+  { version: 'V5.3.4', date: '2026-04-05', note: 'Phase1全部完成：①ULD卡片默认折叠；②货物列表固定列(AWB左/→ULD右)；③ULD板型快捷按钮(Q7/Q6/AKE/AAU/PLA/BULK)；④工具栏精简(移除旧标题+Select下拉框)' },
+  { version: 'V5.3.2', date: '2026-04-04', note: '登录页VERSION/BUILD_DATE/CHANGELOG信息一致性修正；固化版本校验SOP' },
   { version: 'V5.3.0', date: '2026-04-01', note: '修复主菜单折叠功能，Header左侧新增折叠/展开按钮' },
   { version: 'V5.2', date: '2026-03-30', note: '智能排舱重大升级：三步流程、IATA规则引擎、AI排舱+W&B包线图' },
   { version: 'V5.0', date: '2026-03-26', note: 'B767-300BCF专业版：货舱布局图、六线包线图、ULD 3D可视化、主题切换' },
